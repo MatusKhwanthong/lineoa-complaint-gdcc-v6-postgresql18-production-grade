@@ -5,7 +5,7 @@ import { z } from 'zod';
 import config from '../config.js';
 import { pool } from '../db.js';
 import { ApiError } from '../errors.js';
-import { requireAdmin, requireRoles } from '../middleware/admin-auth.js';
+import { requireAdmin, requireRoles, isElevatedStaff } from '../middleware/admin-auth.js';
 import { adminLoginSchema, statusUpdateSchema } from '../validators.js';
 import { notifyStatusChanged } from '../services/notifications.js';
 import { sendStoredImage } from '../services/uploads.js';
@@ -114,6 +114,7 @@ router.get('/complaints', async (req, res) => {
   const querySchema = z.object({
     status: z.string().optional(),
     search: z.string().max(200).optional(),
+    mine: z.coerce.boolean().optional(),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),
   });
@@ -123,13 +124,20 @@ router.get('/complaints', async (req, res) => {
     throw new ApiError(400, 'ตัวกรองไม่ถูกต้อง');
   }
 
-  const { status, search, page, limit } = parsed.data;
+  const { status, search, mine, page, limit } = parsed.data;
   const conditions = [];
   const values = [];
 
   if (status) {
     values.push(status);
     conditions.push(`c.status::text = $${values.length}`);
+  }
+
+  // ?mine=true = ดูเฉพาะเรื่องที่ตัวเองถูกมอบหมาย (ใช้ได้ทุก role,
+  // แต่เป็นมุมมองหลักของ officer เพราะแก้สถานะได้แค่เรื่องของตัวเอง)
+  if (mine) {
+    values.push(req.admin.id);
+    conditions.push(`c.assigned_staff_user_id = $${values.length}`);
   }
 
   if (search) {
@@ -171,6 +179,7 @@ router.get('/complaints', async (req, res) => {
         c.line_display_name,
         c.created_at,
         c.updated_at,
+        c.assigned_staff_user_id,
         cc.name_th AS category_name,
         d.name_th AS department_name,
         su.display_name AS assigned_staff_name,
@@ -202,9 +211,15 @@ router.get('/complaints', async (req, res) => {
     values,
   );
 
+  // บอก frontend ว่าแต่ละเรื่องแก้สถานะได้ไหม (officer แก้ได้เฉพาะของตัวเอง)
+  const rows = result.rows.map((row) => ({
+    ...row,
+    canEditStatus: isElevatedStaff(req.admin) || row.assigned_staff_user_id === req.admin.id,
+  }));
+
   res.json({
     success: true,
-    data: result.rows,
+    data: rows,
     pagination: {
       page,
       limit,
@@ -267,9 +282,12 @@ router.get('/complaints/:id', async (req, res) => {
     [req.params.id],
   );
 
+  const complaint = result.rows[0];
+  const canEditStatus = isElevatedStaff(req.admin) || complaint.assigned_staff_user_id === req.admin.id;
+
   res.json({
     success: true,
-    data: { ...result.rows[0], history: history.rows },
+    data: { ...complaint, canEditStatus, history: history.rows },
   });
 });
 
@@ -299,6 +317,12 @@ router.patch('/complaints/:id/status', async (req, res) => {
 
     const current = currentResult.rows[0];
     const nextStatus = parsed.data.status;
+
+    // Officer แก้สถานะได้เฉพาะเรื่องที่ตัวเองถูกมอบหมาย
+    // supervisor/admin แก้ได้ทุกเรื่อง
+    if (!isElevatedStaff(req.admin) && current.assigned_staff_user_id !== req.admin.id) {
+      throw new ApiError(403, 'คุณสามารถแก้ไขได้เฉพาะเรื่องที่ได้รับมอบหมายเท่านั้น');
+    }
 
     if (nextStatus !== current.status) {
       const validNextStatuses = allowedTransitions[current.status] || [];
@@ -470,14 +494,14 @@ router.get('/departments', async (req, res) => {
   res.json({ success: true, data: result.rows });
 });
 
-router.get('/staff', async (req, res) => {
+router.get('/staff', requireRoles('admin', 'supervisor'), async (req, res) => {
   const result = await pool.query(
     `SELECT id, username, display_name, role FROM staff_users WHERE is_active = true ORDER BY display_name`,
   );
   res.json({ success: true, data: result.rows });
 });
 
-router.patch('/complaints/:id/assignment', async (req, res) => {
+router.patch('/complaints/:id/assignment', requireRoles('admin', 'supervisor'), async (req, res) => {
   const idResult = z.string().uuid().safeParse(req.params.id);
   if (!idResult.success) throw new ApiError(400, 'รหัสรายการไม่ถูกต้อง');
 
@@ -593,7 +617,7 @@ router.get('/governance/audit-logs', requireRoles('admin','supervisor'), async (
   res.json({success:true,data:result.rows});
 });
 
-router.get('/reports/export.csv', async (req, res) => {
+router.get('/reports/export.csv', requireRoles('admin', 'supervisor'), async (req, res) => {
   const result=await pool.query(`SELECT c.reference_no,c.title,cc.name_th AS category,c.status,c.priority,c.contact_name,c.contact_phone,c.location_text,d.name_th AS department,su.display_name AS assigned_staff,c.created_at,c.due_at,c.completed_at FROM complaints c JOIN complaint_categories cc ON cc.id=c.category_id LEFT JOIN departments d ON d.id=c.department_id LEFT JOIN staff_users su ON su.id=c.assigned_staff_user_id ORDER BY c.created_at DESC`);
   const headers=['reference_no','title','category','status','priority','contact_name','contact_phone','location_text','department','assigned_staff','created_at','due_at','completed_at'];
   const esc=v=>'"'+String(v??'').replaceAll('"','""')+'"';

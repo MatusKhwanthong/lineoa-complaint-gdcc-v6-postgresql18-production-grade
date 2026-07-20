@@ -38,3 +38,10 @@ export function requireRoles(...roles) {
     return next();
   };
 }
+
+// Officer เป็น role สิทธิ์ต่ำสุดในทีมงาน — helper นี้ตอบคำถาม
+// "role ปัจจุบันอยู่เหนือ officer หรือไม่" ใช้เวลาต้องแยกว่า
+// supervisor/admin ทำได้ไม่จำกัด แต่ officer ทำได้เฉพาะงานของตัวเอง
+export function isElevatedStaff(admin) {
+  return Boolean(admin) && (admin.role === 'admin' || admin.role === 'supervisor');
+}
