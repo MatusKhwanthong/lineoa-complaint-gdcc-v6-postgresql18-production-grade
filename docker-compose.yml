@@ -5,7 +5,8 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-complaint_db}
       POSTGRES_USER: ${POSTGRES_USER:-complaint_app}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?กรุณากำหนด POSTGRES_PASSWORD ในไฟล์ .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      #${POSTGRES_PASSWORD:?กรุณากำหนด POSTGRES_PASSWORD ในไฟล์ .env}
       TZ: Asia/Bangkok
       PGDATA: /var/lib/postgresql/18/docker
     volumes:

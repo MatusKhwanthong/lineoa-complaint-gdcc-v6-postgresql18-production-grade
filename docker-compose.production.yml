@@ -8,7 +8,8 @@ services:
     env_file: [.env.production]
     ports: ["127.0.0.1:3000:3000"]
     volumes:
-      - complaint_uploads:/app/uploads
+      #- complaint_uploads:/app/uploads
+      - /mnt/c/Project/lineoa-complaint-gdcc-v6:/app/uploads
     tmpfs:
       - /tmp:size=256m,mode=1777
     read_only: true
