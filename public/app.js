@@ -130,24 +130,53 @@ async function initializeLiff() {
 
     const profileImage = $('#lineProfileImage');
     const fallbackIcon = $('#lineFallbackIcon');
-    if (profileImage && profile.pictureUrl) {
-      profileImage.alt = `รูปโปรไฟล์ของ ${profile.displayName || 'ผู้ใช้ LINE'}`;
-      profileImage.referrerPolicy = 'no-referrer';
-      profileImage.onload = () => {
-        profileImage.classList.remove('hidden');
-        fallbackIcon?.classList.add('hidden');
-      };
-      profileImage.onerror = () => {
-        console.warn('โหลดรูปโปรไฟล์ LINE ไม่สำเร็จ', profile.pictureUrl);
-        profileImage.removeAttribute('src');
-        profileImage.classList.add('hidden');
-        fallbackIcon?.classList.remove('hidden');
-      };
-      profileImage.src = profile.pictureUrl;
-    } else {
-      profileImage?.removeAttribute('src');
-      profileImage?.classList.add('hidden');
-      fallbackIcon?.classList.remove('hidden');
+
+    async function showLineProfileImage(pictureUrl) {
+      if (!profileImage || !pictureUrl) return false;
+
+      const proxiedUrl = `/api/line/profile-image?url=${encodeURIComponent(pictureUrl)}`;
+      const candidateUrls = [proxiedUrl, pictureUrl];
+
+      for (const imageUrl of candidateUrls) {
+        try {
+          const preload = new Image();
+          preload.decoding = 'async';
+          preload.referrerPolicy = 'no-referrer';
+
+          await new Promise((resolve, reject) => {
+            const timer = window.setTimeout(() => reject(new Error('PROFILE_IMAGE_TIMEOUT')), 10000);
+            preload.onload = () => {
+              window.clearTimeout(timer);
+              resolve();
+            };
+            preload.onerror = () => {
+              window.clearTimeout(timer);
+              reject(new Error('PROFILE_IMAGE_LOAD_FAILED'));
+            };
+            preload.src = imageUrl;
+          });
+
+          profileImage.alt = `รูปโปรไฟล์ของ ${profile.displayName || 'ผู้ใช้ LINE'}`;
+          profileImage.referrerPolicy = 'no-referrer';
+          profileImage.src = imageUrl;
+          profileImage.classList.remove('hidden');
+          fallbackIcon?.classList.add('hidden');
+          return true;
+        } catch (error) {
+          console.warn('ลองโหลดรูปโปรไฟล์ LINE ไม่สำเร็จ', { imageUrl, error: error.message });
+        }
+      }
+
+      return false;
+    }
+
+    profileImage?.removeAttribute('src');
+    profileImage?.classList.add('hidden');
+    fallbackIcon?.classList.remove('hidden');
+
+    if (profile.pictureUrl) {
+      const loaded = await showLineProfileImage(profile.pictureUrl);
+      if (!loaded) console.warn('โหลดรูปโปรไฟล์ LINE ไม่สำเร็จทุกวิธี', profile.pictureUrl);
     }
 
     state.initialized = true;
