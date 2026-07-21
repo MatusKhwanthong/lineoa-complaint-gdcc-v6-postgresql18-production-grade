@@ -42,7 +42,7 @@ async function api(path, options = {}) {
   if (!isFormData) headers.set('content-type', 'application/json');
   if (state.devUserId) {
     headers.set('x-dev-user-id', state.devUserId);
-    headers.set('x-dev-display-name', 'ผู้ใช้ทดสอบ');
+    headers.set('x-dev-display-name', 'Test User');
   } else if (state.idToken) {
     headers.set('authorization', `Bearer ${state.idToken}`);
   }
