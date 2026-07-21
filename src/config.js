@@ -44,7 +44,9 @@ const config = {
 
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
 
-  liffId: process.env.LIFF_ID || '',
+  // Render environment variables are case-sensitive.
+  // Prefer LIFF_ID, while keeping liffId as a compatibility fallback.
+  liffId: (process.env.LIFF_ID || process.env.liffId || '').trim(),
   lineLoginChannelId: process.env.LINE_LOGIN_CHANNEL_ID || '',
   lineChannelSecret: process.env.LINE_CHANNEL_SECRET || '',
   lineChannelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
@@ -82,7 +84,10 @@ if (config.maxUploadMb < 1 || config.maxUploadMb > 20) {
 if (isProduction) {
   for (const key of requiredInProduction) {
     if (!config[key]) {
-      throw new Error(`Missing required production configuration: ${key}`);
+      const envName = key === 'liffId' ? 'LIFF_ID' : key;
+      throw new Error(
+        `Missing required production configuration: ${key} (set ${envName} in Render Environment)`,
+      );
     }
   }
 
