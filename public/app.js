@@ -574,4 +574,58 @@ async function main() {
   }
 }
 
+async function initializeLiff() {
+  const loading = document.getElementById('liffLoading');
+
+  try {
+    if (!window.liff) {
+      throw new Error('โหลด LIFF SDK ไม่สำเร็จ');
+    }
+
+    const response = await fetch('/api/config');
+    const config = await response.json();
+
+    console.log('LIFF config:', {
+      hasLiffId: Boolean(config.liffId)
+    });
+
+    if (!config.liffId) {
+      throw new Error('ไม่พบ LIFF_ID จากเซิร์ฟเวอร์');
+    }
+
+    await liff.init({
+      liffId: config.liffId
+    });
+
+    console.log('LIFF initialized', {
+      isInClient: liff.isInClient(),
+      isLoggedIn: liff.isLoggedIn()
+    });
+
+    if (!liff.isLoggedIn()) {
+      liff.login({
+        redirectUri: window.location.origin + window.location.pathname
+      });
+      return;
+    }
+
+    const profile = await liff.getProfile();
+
+    console.log('LINE profile:', profile);
+
+    if (loading) {
+      loading.textContent = `เชื่อมต่อสำเร็จ: ${profile.displayName}`;
+    }
+  } catch (error) {
+    console.error('LIFF error:', error);
+
+    if (loading) {
+      loading.textContent =
+        `เชื่อมต่อ LINE ไม่สำเร็จ: ${error.message}`;
+    }
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initializeLiff);
+
 main();
