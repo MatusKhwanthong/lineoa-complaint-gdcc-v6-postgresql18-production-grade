@@ -30,12 +30,12 @@ app.use(
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
-        "default-src": ["'self'"],
-        "script-src": ["'self'", 'https://static.line-scdn.net'],
-        "connect-src": ["'self'", 'https://api.line.me', 'https://access.line.me'],
-        "img-src": ["'self'", 'data:', 'blob:', 'https:'],
-        "frame-src": ["'self'", 'https://www.google.com', 'https://maps.google.com'],
-        "style-src": ["'self'", "'unsafe-inline'"],
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'",'https://static.line-scdn.net',],
+        "connect-src": ["'self'",'https://api.line.me','https://access.line.me',],
+        "img-src": ["'self'",'data:','blob:','https://*.tile.openstreetmap.org','https://tile.openstreetmap.org',],
+        "frame-src": ["'self'",'https://access.line.me',],
+        "style-src": ["'self'",],
         "font-src": ["'self'", 'data:'],
         "object-src": ["'none'"],
         "base-uri": ["'self'"],
