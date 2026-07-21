@@ -6,16 +6,16 @@
   <meta name="theme-color" content="#07564d">
   <title>Smart City Citizen Service</title>
   <link rel="stylesheet" href="/styles.css">
-  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
-  <script src="/vendor/leaflet/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script type="module" src="/app.js?v=20260721-profile-1"></script>
+  <script type="module" src="/app.js?v=20260721-profile-map-2"></script>
   
 </head>
 <body class="citizen-v3-body">
   <header class="citizen-header">
     <div class="citizen-brand"><span class="citizen-logo">SC</span><div><strong>SMART CITY</strong><small>Citizen Service Center</small></div></div>
-    <div class="line-status"><img id="lineProfileImage" class="line-profile-image hidden" alt="รูปโปรไฟล์ LINE"><span id="lineFallbackIcon" class="line-dot">LINE</span><div><b>เชื่อมต่อผ่าน LINE OA</b><small id="userGreeting">กำลังเชื่อมต่อ LINE…</small></div></div>
+    <div class="line-status"><img id="lineProfileImage" class="line-profile-image hidden" alt="รูปโปรไฟล์ LINE" referrerpolicy="no-referrer"><span id="lineFallbackIcon" class="line-dot">LINE</span><div><b>เชื่อมต่อผ่าน LINE OA</b><small id="userGreeting">กำลังเชื่อมต่อ LINE…</small></div></div>
   </header>
 
   <main class="citizen-shell">

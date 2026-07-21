@@ -131,11 +131,21 @@ async function initializeLiff() {
     const profileImage = $('#lineProfileImage');
     const fallbackIcon = $('#lineFallbackIcon');
     if (profileImage && profile.pictureUrl) {
-      profileImage.src = profile.pictureUrl;
       profileImage.alt = `รูปโปรไฟล์ของ ${profile.displayName || 'ผู้ใช้ LINE'}`;
-      profileImage.classList.remove('hidden');
-      fallbackIcon?.classList.add('hidden');
+      profileImage.referrerPolicy = 'no-referrer';
+      profileImage.onload = () => {
+        profileImage.classList.remove('hidden');
+        fallbackIcon?.classList.add('hidden');
+      };
+      profileImage.onerror = () => {
+        console.warn('โหลดรูปโปรไฟล์ LINE ไม่สำเร็จ', profile.pictureUrl);
+        profileImage.removeAttribute('src');
+        profileImage.classList.add('hidden');
+        fallbackIcon?.classList.remove('hidden');
+      };
+      profileImage.src = profile.pictureUrl;
     } else {
+      profileImage?.removeAttribute('src');
       profileImage?.classList.add('hidden');
       fallbackIcon?.classList.remove('hidden');
     }
