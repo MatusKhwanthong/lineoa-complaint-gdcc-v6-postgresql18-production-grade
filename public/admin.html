@@ -83,7 +83,7 @@
           <div id="categoryGovernanceTable"></div>
         </section>
         <section id="governanceDepartments" class="governance-panel v3-card hidden">
-          <div class="v3-card-head"><div><p class="overline">ORGANIZATION</p><h2>หน่วยงานรับผิดชอบ</h2></div><button id="addDepartmentButton" class="v3-primary">เพิ่มหน่วยงาน</button></div>
+          <div class="v3-card-head"><div><p class="overline">ORGANIZATION</p><h2>หน่วยงานรับผิดชอบ</h2></div><button id="addDepartmentButton" class="v3-primary hidden" data-admin-only>เพิ่มหน่วยงาน</button></div>
           <div id="departmentGovernanceTable"></div>
         </section>
         <section id="governanceUsers" class="governance-panel v3-card hidden">
@@ -99,6 +99,6 @@
 
     <aside id="detailDrawer" class="v3-drawer hidden"><div class="drawer-top"><div><p class="overline">CASE INTELLIGENCE</p><h2 id="drawerReference">-</h2></div><button id="closeDrawer" class="v3-close" type="button">×</button></div><div id="drawerContent" class="drawer-content"></div></aside>
   </div>
-<dialog id="governanceDialog" class="governance-dialog"><form method="dialog" id="governanceForm"><div class="dialog-head"><div><p class="overline">SYSTEM GOVERNANCE</p><h2 id="governanceDialogTitle">จัดการข้อมูล</h2></div><button value="cancel" class="v3-close">×</button></div><div id="governanceDialogFields" class="dialog-fields"></div><div class="dialog-actions"><button value="cancel" class="v3-text-btn">ยกเลิก</button><button id="governanceSaveButton" value="default" class="v3-primary">บันทึก</button></div></form></dialog>
+<dialog id="governanceDialog" class="governance-dialog"><form id="governanceForm"><div class="dialog-head"><div><p class="overline">SYSTEM GOVERNANCE</p><h2 id="governanceDialogTitle">จัดการข้อมูล</h2></div><button id="governanceCloseButton" type="button" class="v3-close" aria-label="ปิด">×</button></div><div id="governanceDialogFields" class="dialog-fields"></div><div class="dialog-actions"><button id="governanceCancelButton" type="button" class="v3-text-btn">ยกเลิก</button><button id="governanceSaveButton" type="submit" class="v3-primary">บันทึก</button></div></form></dialog>
 </body>
 </html>

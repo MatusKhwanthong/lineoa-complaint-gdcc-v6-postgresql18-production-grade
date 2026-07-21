@@ -319,7 +319,8 @@ router.patch('/complaints/:id/status', async (req, res) => {
     const nextStatus = parsed.data.status;
 
     // Officer แก้สถานะได้เฉพาะเรื่องที่ตัวเองถูกมอบหมาย
-    // supervisor/admin แก้ได้ทุกเรื่อง
+    // supervisor แก้ไม่ได้ทุกเรื่อง
+    // admin แก้ได้ทุกเรื่อง
     if (!isElevatedStaff(req.admin) && current.assigned_staff_user_id !== req.admin.id) {
       throw new ApiError(403, 'คุณสามารถแก้ไขได้เฉพาะเรื่องที่ได้รับมอบหมายเท่านั้น');
     }
