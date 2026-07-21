@@ -77,11 +77,31 @@ router.post('/', uploadComplaintImages, async (req, res) => {
       sequenceResult.rows[0].sequence_value,
     );
 
+    const lineUserResult = await client.query(
+      `INSERT INTO line_users (
+          line_user_id,
+          display_name,
+          picture_url,
+          updated_at
+       ) VALUES ($1, $2, $3, current_timestamp)
+       ON CONFLICT (line_user_id) DO UPDATE
+       SET display_name = COALESCE(EXCLUDED.display_name, line_users.display_name),
+           picture_url = COALESCE(EXCLUDED.picture_url, line_users.picture_url),
+           updated_at = current_timestamp
+       RETURNING id`,
+      [
+        req.lineUser.userId,
+        req.lineUser.displayName,
+        req.lineUser.pictureUrl,
+      ],
+    );
+
     const result = await client.query(
       `INSERT INTO complaints (
           reference_no,
           line_user_id,
           line_display_name,
+          line_user_record_id,
           category_id,
           title,
           description,
@@ -94,7 +114,7 @@ router.post('/', uploadComplaintImages, async (req, res) => {
           privacy_consent_at,
           privacy_consent_version
        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
           current_timestamp, '1.1'
        )
        RETURNING *`,
@@ -102,6 +122,7 @@ router.post('/', uploadComplaintImages, async (req, res) => {
         referenceNo,
         req.lineUser.userId,
         req.lineUser.displayName,
+        lineUserResult.rows[0].id,
         input.categoryId,
         input.title,
         input.description,

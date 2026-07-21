@@ -8,6 +8,7 @@ const state = {
   maxUploadFiles: 5,
   maxFileMb: 8,
   previewUrls: [],
+  lineProfile: null,
 };
 
 const statusLabels = {
@@ -122,8 +123,22 @@ async function initializeLiff() {
 
     setLineStatus('กำลังโหลดข้อมูลผู้ใช้ LINE…');
     const profile = await window.liff.getProfile();
+    state.lineProfile = profile;
+
     setLineStatus(`สวัสดี ${profile.displayName || 'ผู้ใช้ LINE'}`);
     if (!$('#contactName').value) $('#contactName').value = profile.displayName || '';
+
+    const profileImage = $('#lineProfileImage');
+    const fallbackIcon = $('#lineFallbackIcon');
+    if (profileImage && profile.pictureUrl) {
+      profileImage.src = profile.pictureUrl;
+      profileImage.alt = `รูปโปรไฟล์ของ ${profile.displayName || 'ผู้ใช้ LINE'}`;
+      profileImage.classList.remove('hidden');
+      fallbackIcon?.classList.add('hidden');
+    } else {
+      profileImage?.classList.add('hidden');
+      fallbackIcon?.classList.remove('hidden');
+    }
 
     state.initialized = true;
     return true;
@@ -428,16 +443,32 @@ function setupTabs() {
   });
 }
 
-function getGeolocationErrorMessage(error) {
+function getGeolocationErrorMessage(error, permissionState = 'unknown') {
+  if (permissionState === 'denied' || error?.code === 1) {
+    return (
+      'ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง กรุณาเปิดสิทธิ์ตำแหน่งให้แอป LINE ' +
+      'แล้วปิดหน้า LIFF และเปิดใหม่ หรือแตะตำแหน่งบนแผนที่แทน'
+    );
+  }
+
   switch (error?.code) {
-    case error.PERMISSION_DENIED:
-      return 'ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง กรุณาเปิดสิทธิ์ Location ในเบราว์เซอร์หรือ LINE แล้วลองใหม่';
-    case error.POSITION_UNAVAILABLE:
-      return 'อุปกรณ์ไม่สามารถระบุตำแหน่งได้ กรุณาเปิด GPS/Wi-Fi แล้วลองใหม่';
-    case error.TIMEOUT:
-      return 'ค้นหาตำแหน่งนานเกินไป กรุณาออกไปบริเวณเปิดโล่งแล้วลองใหม่';
+    case 2:
+      return 'อุปกรณ์ไม่สามารถระบุตำแหน่งได้ กรุณาเปิด GPS/Wi-Fi หรือแตะตำแหน่งบนแผนที่แทน';
+    case 3:
+      return 'ค้นหาตำแหน่งนานเกินไป กรุณาลองใหม่หรือแตะตำแหน่งบนแผนที่แทน';
     default:
-      return 'ไม่สามารถอ่านตำแหน่งปัจจุบันได้';
+      return `ไม่สามารถอ่านตำแหน่งปัจจุบันได้${error?.message ? ` (${error.message})` : ''}`;
+  }
+}
+
+async function getLocationPermissionState() {
+  try {
+    if (!navigator.permissions?.query) return 'unknown';
+    const result = await navigator.permissions.query({ name: 'geolocation' });
+    return result.state || 'unknown';
+  } catch {
+    // LINE WebView/iOS บางรุ่นไม่รองรับ Permissions API
+    return 'unknown';
   }
 }
 
@@ -445,6 +476,25 @@ function requestCurrentPosition(options) {
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(resolve, reject, options);
   });
+}
+
+function showManualLocationPicker() {
+  try {
+    const panel = $('#mapPanel');
+    const map = ensureMap();
+    panel.classList.remove('hidden');
+
+    // แสดงพื้นที่สุราษฎร์ธานีเป็นจุดเริ่มต้น แต่ยังไม่บันทึกพิกัด
+    if (state.latitude === null || state.longitude === null) {
+      map.setView([9.1382, 99.3217], 13);
+    }
+
+    window.setTimeout(() => map.invalidateSize(), 0);
+    $('#locationStatus').textContent =
+      'กรุณาแตะตำแหน่งบนแผนที่ หรือลากหมุดหลังเลือกตำแหน่ง';
+  } catch (mapError) {
+    console.error('Unable to show manual map picker:', mapError);
+  }
 }
 
 function setupLocation() {
@@ -455,13 +505,22 @@ function setupLocation() {
     clearAlert();
 
     if (!navigator.geolocation) {
-      showAlert('อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง');
+      showAlert('อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง กรุณาแตะตำแหน่งบนแผนที่แทน');
+      showManualLocationPicker();
       return;
     }
 
     if (!window.isSecureContext) {
-      showAlert('การใช้ตำแหน่งต้องเปิดเว็บผ่าน HTTPS หรือ localhost เท่านั้น');
+      showAlert('การใช้ตำแหน่งต้องเปิดเว็บผ่าน HTTPS เท่านั้น กรุณาแตะตำแหน่งบนแผนที่แทน');
       status.textContent = 'ไม่สามารถใช้ตำแหน่งบนการเชื่อมต่อที่ไม่ปลอดภัย';
+      showManualLocationPicker();
+      return;
+    }
+
+    const permissionState = await getLocationPermissionState();
+    if (permissionState === 'denied') {
+      showAlert(getGeolocationErrorMessage({ code: 1 }, permissionState));
+      showManualLocationPicker();
       return;
     }
 
@@ -478,9 +537,7 @@ function setupLocation() {
           maximumAge: 0,
         });
       } catch (firstError) {
-        // มือถือบางรุ่นหรือ LIFF อาจหา GPS ความแม่นยำสูงไม่ทัน
-        // จึงลองซ้ำด้วยโหมดทั่วไปก่อนแสดงข้อผิดพลาด
-        if (firstError?.code !== firstError?.PERMISSION_DENIED) {
+        if (firstError?.code !== 1) {
           position = await requestCurrentPosition({
             enableHighAccuracy: false,
             timeout: 15_000,
@@ -503,11 +560,19 @@ function setupLocation() {
         status.textContent += ` ความคลาดเคลื่อนประมาณ ${Math.round(accuracy)} เมตร`;
       }
     } catch (error) {
-      status.textContent = 'ไม่สามารถอ่านตำแหน่งได้';
-      showAlert(getGeolocationErrorMessage(error));
+      const latestPermissionState = await getLocationPermissionState();
+      status.textContent = 'ไม่สามารถอ่านตำแหน่งอัตโนมัติได้ กรุณาเลือกบนแผนที่';
+      showAlert(getGeolocationErrorMessage(error, latestPermissionState));
+      showManualLocationPicker();
+      console.error('Geolocation failed:', {
+        code: error?.code,
+        message: error?.message,
+        permissionState: latestPermissionState,
+        isInLineClient: Boolean(window.liff?.isInClient?.()),
+      });
     } finally {
       button.disabled = false;
-      button.textContent = '⌖ ใช้ตำแหน่งปัจจุบัน';
+      button.textContent = '⌖ ลองใช้ตำแหน่งปัจจุบันอีกครั้ง';
     }
   });
 
