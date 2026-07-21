@@ -31,10 +31,10 @@ app.use(
       useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'",'https://static.line-scdn.net',],
-        "connect-src": ["'self'",'https://api.line.me','https://access.line.me',],
+        scriptSrc: ["'self'", 'https://static.line-scdn.net'],
+        "connect-src": ["'self'", "https://api.line.me", "https://access.line.me", "https://liff.line.me", "https://*.line.me", "https://*.line-scdn.net"],
         "img-src": ["'self'",'data:','blob:','https://*.tile.openstreetmap.org','https://tile.openstreetmap.org',],
-        "frame-src": ["'self'",'https://access.line.me',],
+        "frame-src": ["'self'", "https://access.line.me", "https://liff.line.me", "https://*.line.me"],
         "style-src": ["'self'",],
         "font-src": ["'self'", 'data:'],
         "object-src": ["'none'"],
@@ -106,7 +106,7 @@ app.use('/api/admin', adminRouter);
 
 app.use(express.static(publicPath, {
   extensions: ['html'],
-  maxAge: config.isProduction ? '1h' : 0,
+  maxAge: 0,
   etag: true,
   immutable: false,
 }));

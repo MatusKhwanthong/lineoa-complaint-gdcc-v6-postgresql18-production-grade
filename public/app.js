@@ -69,87 +69,76 @@ async function initializeLiff() {
     if (greeting) greeting.textContent = message;
   };
 
-  setLineStatus('กำลังโหลดการตั้งค่า LINE…');
-
-  const configResponse = await fetch('/api/config', {
-    cache: 'no-store',
-    headers: { accept: 'application/json' },
-  });
-
-  if (!configResponse.ok) {
-    throw new Error(`โหลดการตั้งค่าไม่สำเร็จ (${configResponse.status})`);
-  }
-
-  const config = await configResponse.json();
-
-  state.maxUploadFiles = config.uploadLimits?.maxFiles || 5;
-  state.maxFileMb = config.uploadLimits?.maxFileMb || 8;
-
-  $('#privacyLink').href = config.privacyPolicyUrl || '/privacy.html';
-  $('#imageHelp').textContent =
-    `แนบ 1–${state.maxUploadFiles} ภาพ ภาพละไม่เกิน ${state.maxFileMb} MB ` +
-    'ระบบจะลบข้อมูล EXIF และย่อขนาดก่อนจัดเก็บ';
-
-  if (config.devBypassLineAuth) {
-    state.devUserId = 'dev-user-001';
-    setLineStatus('สวัสดี ผู้ใช้ทดสอบ (dev mode)');
-    if (!$('#contactName').value) $('#contactName').value = 'ผู้ใช้ทดสอบ';
-    state.initialized = true;
-    return true;
-  }
-
-  if (!config.liffId) {
-    throw new Error('ไม่พบ LIFF_ID กรุณาตั้งค่าใน Render Environment');
-  }
-
-  if (typeof window.liff === 'undefined') {
-    throw new Error('โหลด LINE LIFF SDK ไม่สำเร็จ กรุณาปิดแล้วเปิดหน้าใหม่');
-  }
-
-  setLineStatus('กำลังเริ่มต้น LINE LIFF…');
-
-  const initTimeout = new Promise((_, reject) => {
-    window.setTimeout(() => reject(new Error('LIFF_INIT_TIMEOUT')), 15000);
-  });
-
   try {
+    setLineStatus('กำลังโหลดการตั้งค่า LINE…');
+
+    const configResponse = await fetch('/api/config', {
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+    });
+
+    if (!configResponse.ok) {
+      throw new Error(`CONFIG_HTTP_${configResponse.status}`);
+    }
+
+    const config = await configResponse.json();
+    state.maxUploadFiles = config.uploadLimits?.maxFiles || 5;
+    state.maxFileMb = config.uploadLimits?.maxFileMb || 8;
+
+    $('#privacyLink').href = config.privacyPolicyUrl || '/privacy.html';
+    $('#imageHelp').textContent =
+      `แนบ 1–${state.maxUploadFiles} ภาพ ภาพละไม่เกิน ${state.maxFileMb} MB ` +
+      'ระบบจะลบข้อมูล EXIF และย่อขนาดก่อนจัดเก็บ';
+
+    if (config.devBypassLineAuth) {
+      state.devUserId = 'dev-user-001';
+      setLineStatus('สวัสดี ผู้ใช้ทดสอบ (dev mode)');
+      if (!$('#contactName').value) $('#contactName').value = 'ผู้ใช้ทดสอบ';
+      state.initialized = true;
+      return true;
+    }
+
+    if (!config.liffId) throw new Error('LIFF_ID_MISSING');
+    if (!window.liff) throw new Error('LIFF_SDK_NOT_LOADED');
+
+    setLineStatus('กำลังเริ่มต้น LINE LIFF…');
     await Promise.race([
       window.liff.init({ liffId: config.liffId }),
-      initTimeout,
+      new Promise((_, reject) => {
+        window.setTimeout(() => reject(new Error('LIFF_INIT_TIMEOUT')), 20000);
+      }),
     ]);
+
+    if (!window.liff.isLoggedIn()) {
+      setLineStatus('กำลังเข้าสู่ระบบ LINE…');
+      window.liff.login({
+        redirectUri: `${window.location.origin}${window.location.pathname}`,
+      });
+      return false;
+    }
+
+    state.idToken = window.liff.getIDToken();
+    if (!state.idToken) throw new Error('ID_TOKEN_MISSING_OPENID_SCOPE');
+
+    setLineStatus('กำลังโหลดข้อมูลผู้ใช้ LINE…');
+    const profile = await window.liff.getProfile();
+    setLineStatus(`สวัสดี ${profile.displayName || 'ผู้ใช้ LINE'}`);
+    if (!$('#contactName').value) $('#contactName').value = profile.displayName || '';
+
+    state.initialized = true;
+    return true;
   } catch (error) {
-    const code = error?.code || error?.message || 'UNKNOWN';
-    console.error('LIFF initialization failed', {
+    const code = error?.code || error?.message || 'UNKNOWN_LINE_ERROR';
+    console.error('LINE LIFF connection failed', {
       code: error?.code,
       message: error?.message,
-      liffIdConfigured: Boolean(config.liffId),
       currentUrl: window.location.href,
+      isInClient: Boolean(window.liff?.isInClient?.()),
+      isLoggedIn: Boolean(window.liff?.isLoggedIn?.()),
     });
-    throw new Error(`เริ่มต้น LINE LIFF ไม่สำเร็จ: ${code}`);
+    setLineStatus(`LINE ผิดพลาด: ${code}`);
+    throw new Error(`เชื่อมต่อ LINE ไม่สำเร็จ (${code})`);
   }
-
-  if (!window.liff.isLoggedIn()) {
-    setLineStatus('กำลังเข้าสู่ระบบ LINE…');
-    const redirectUri = `${window.location.origin}${window.location.pathname}`;
-    window.liff.login({ redirectUri });
-    return false;
-  }
-
-  state.idToken = window.liff.getIDToken();
-  if (!state.idToken) {
-    throw new Error('LIFF ไม่ได้รับ ID Token กรุณาเปิด scope openid');
-  }
-
-  setLineStatus('กำลังโหลดข้อมูลผู้ใช้ LINE…');
-  const profile = await window.liff.getProfile();
-  setLineStatus(`สวัสดี ${profile.displayName || 'ผู้ใช้ LINE'}`);
-
-  if (!$('#contactName').value) {
-    $('#contactName').value = profile.displayName || '';
-  }
-
-  state.initialized = true;
-  return true;
 }
 
 async function loadCategories() {
@@ -606,31 +595,21 @@ async function main() {
   setupLocation();
   setupForm();
 
-  // แยกข้อผิดพลาดของ LINE ออกจากข้อผิดพลาดของ API/ฐานข้อมูล
-  // เพื่อไม่ให้การโหลดหมวดหมู่ล้มเหลวถูกแสดงว่าเชื่อมต่อ LINE ไม่ได้
-  let ready = false;
+  let lineReady = false;
   try {
-    ready = await initializeLiff();
+    lineReady = await initializeLiff();
   } catch (error) {
-    console.error('LINE LIFF connection failed:', error);
-    showAlert(error?.message || 'ไม่สามารถเชื่อมต่อ LINE ได้');
-    const greeting = $('#userGreeting');
-    if (greeting) greeting.textContent = 'ไม่สามารถเชื่อมต่อ LINE ได้';
-    return;
+    showAlert(error?.message || 'เชื่อมต่อ LINE ไม่สำเร็จ');
   }
 
-  if (!ready) return;
-
+  // หมวดหมู่เป็นข้อมูลสาธารณะ โหลดได้แม้ LINE มีปัญหา
   try {
     await loadCategories();
-    clearAlert();
+    if (lineReady) clearAlert();
   } catch (error) {
     console.error('Loading categories failed:', error);
-    showAlert(
-      `เชื่อมต่อ LINE สำเร็จ แต่โหลดข้อมูลระบบไม่สำเร็จ: ${
-        error?.message || 'กรุณาลองใหม่อีกครั้ง'
-      }`,
-    );
+    const apiMessage = `โหลดข้อมูลระบบไม่สำเร็จ (${error?.message || 'UNKNOWN_API_ERROR'})`;
+    showAlert(lineReady ? apiMessage : `${$('#alert').textContent} | ${apiMessage}`);
   }
 }
 
