@@ -39,7 +39,12 @@ async function api(path, options = {}) {
   const isFormData = options.body instanceof FormData;
 
   if (!isFormData) headers.set('content-type', 'application/json');
-  if (state.idToken) headers.set('authorization', `Bearer ${state.idToken}`);
+  if (state.devUserId) {
+    headers.set('x-dev-user-id', state.devUserId);
+    headers.set('x-dev-display-name', 'ผู้ใช้ทดสอบ');
+  } else if (state.idToken) {
+    headers.set('authorization', `Bearer ${state.idToken}`);
+  }
 
   const response = await fetch(path, { ...options, headers });
   const contentType = response.headers.get('content-type') || '';
@@ -61,10 +66,6 @@ async function initializeLiff() {
   const configResponse = await fetch('/api/config');
   const config = await configResponse.json();
 
-  if (!config.liffId) {
-    throw new Error('ผู้ดูแลระบบยังไม่ได้ตั้งค่า LIFF_ID');
-  }
-
   state.googleMapsApiKey = config.googleMapsApiKey || '';
   state.maxUploadFiles = config.uploadLimits?.maxFiles || 5;
   state.maxFileMb = config.uploadLimits?.maxFileMb || 8;
@@ -73,6 +74,20 @@ async function initializeLiff() {
   $('#imageHelp').textContent =
     `แนบ 1–${state.maxUploadFiles} ภาพ ภาพละไม่เกิน ${state.maxFileMb} MB ` +
     'ระบบจะลบข้อมูล EXIF และย่อขนาดก่อนจัดเก็บ';
+
+  if (config.devBypassLineAuth) {
+    state.devUserId = 'dev-user-001';
+    $('#userGreeting').textContent = 'สวัสดี ผู้ใช้ทดสอบ (dev mode)';
+    if (!$('#contactName').value) {
+      $('#contactName').value = 'ผู้ใช้ทดสอบ';
+    }
+    state.initialized = true;
+    return true;
+  }
+
+  if (!config.liffId) {
+    throw new Error('ผู้ดูแลระบบยังไม่ได้ตั้งค่า LIFF_ID');
+  }
 
   await liff.init({ liffId: config.liffId });
 
@@ -88,14 +103,6 @@ async function initializeLiff() {
 
   const profile = await liff.getProfile();
   $('#userGreeting').textContent = `สวัสดี ${profile.displayName}`;
-
-  if (!$('#contactName').value) {
-    $('#contactName').value = profile.displayName || '';
-  }
-
-  state.initialized = true;
-  return true;
-}
 
 async function loadCategories() {
   const result = await api('/api/categories');

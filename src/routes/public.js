@@ -9,6 +9,7 @@ router.get('/config', (req, res) => {
     liffId: config.liffId,
     privacyPolicyUrl: config.privacyPolicyUrl,
     googleMapsApiKey: config.googleMapsApiKey,
+    devBypassLineAuth: config.devBypassLineAuth,
     uploadLimits: {
       maxFiles: config.maxUploadFiles,
       maxFileMb: config.maxUploadMb,
