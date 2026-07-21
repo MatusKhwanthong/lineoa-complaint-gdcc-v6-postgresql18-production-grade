@@ -606,13 +606,31 @@ async function main() {
   setupLocation();
   setupForm();
 
+  // แยกข้อผิดพลาดของ LINE ออกจากข้อผิดพลาดของ API/ฐานข้อมูล
+  // เพื่อไม่ให้การโหลดหมวดหมู่ล้มเหลวถูกแสดงว่าเชื่อมต่อ LINE ไม่ได้
+  let ready = false;
   try {
-    const ready = await initializeLiff();
-    if (!ready) return;
-    await loadCategories();
+    ready = await initializeLiff();
   } catch (error) {
-    showAlert(error.message);
-    $('#userGreeting').textContent = 'ไม่สามารถเชื่อมต่อ LINE ได้';
+    console.error('LINE LIFF connection failed:', error);
+    showAlert(error?.message || 'ไม่สามารถเชื่อมต่อ LINE ได้');
+    const greeting = $('#userGreeting');
+    if (greeting) greeting.textContent = 'ไม่สามารถเชื่อมต่อ LINE ได้';
+    return;
+  }
+
+  if (!ready) return;
+
+  try {
+    await loadCategories();
+    clearAlert();
+  } catch (error) {
+    console.error('Loading categories failed:', error);
+    showAlert(
+      `เชื่อมต่อ LINE สำเร็จ แต่โหลดข้อมูลระบบไม่สำเร็จ: ${
+        error?.message || 'กรุณาลองใหม่อีกครั้ง'
+      }`,
+    );
   }
 }
 
