@@ -118,7 +118,7 @@ let server;
 try {
   await ensureUploadDirectory();
   await checkDatabase();
-  server = app.listen(config.port, () => {
+  server = app.listen(config.port, '0.0.0.0', () => {
     logger.info('server_started', { port: config.port });
   });
   server.requestTimeout = config.requestTimeoutMs;

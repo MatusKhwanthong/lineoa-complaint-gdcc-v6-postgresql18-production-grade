@@ -29,7 +29,13 @@ export async function verifyLineIdToken(idToken) {
   const result = await response.json().catch(() => ({}));
 
   if (!response.ok || !result.sub) {
-    throw new ApiError(401, 'LINE ID Token ไม่ถูกต้องหรือหมดอายุ');
+    const detail = result.error_description || result.error || 'invalid token';
+    console.warn('[line] ID token verification failed:', detail);
+    throw new ApiError(401, 'LINE ID Token ไม่ถูกต้อง หมดอายุ หรือมาจาก LINE Login Channel คนละรายการ');
+  }
+
+  if (String(result.aud) !== String(config.lineLoginChannelId)) {
+    throw new ApiError(401, 'LINE ID Token ไม่ตรงกับ LINE_LOGIN_CHANNEL_ID ที่ตั้งค่าไว้');
   }
 
   return result;

@@ -12,6 +12,10 @@ function asInteger(value, defaultValue) {
 
 const nodeEnv = process.env.NODE_ENV || 'development';
 const isProduction = nodeEnv === 'production';
+const renderHostname = (process.env.RENDER_EXTERNAL_HOSTNAME || '').trim();
+const defaultBaseUrl = renderHostname
+  ? `https://${renderHostname}`
+  : 'http://localhost:3000';
 
 const config = {
   nodeEnv,
@@ -21,8 +25,8 @@ const config = {
   requestTimeoutMs: asInteger(process.env.REQUEST_TIMEOUT_MS, 30000),
   shutdownTimeoutMs: asInteger(process.env.SHUTDOWN_TIMEOUT_MS, 15000),
   trustProxy: asInteger(process.env.TRUST_PROXY, 1),
-  appBaseUrl: process.env.APP_BASE_URL || 'http://localhost:3000',
-  corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:3000')
+  appBaseUrl: (process.env.APP_BASE_URL || defaultBaseUrl).replace(/\/$/, ''),
+  corsOrigins: (process.env.CORS_ORIGINS || defaultBaseUrl)
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean),
@@ -36,7 +40,7 @@ const config = {
   dbIdleTransactionTimeoutMs: asInteger(process.env.DB_IDLE_TRANSACTION_TIMEOUT_MS, 15000),
   postgresRequiredMajor: asInteger(process.env.POSTGRES_REQUIRED_MAJOR, 18),
 
-  uploadDir: process.env.UPLOAD_DIR || '/app/uploads',
+  uploadDir: (process.env.UPLOAD_DIR || (isProduction ? '/tmp/uploads' : './uploads')).trim(),
   maxUploadFiles: asInteger(process.env.MAX_UPLOAD_FILES, 5),
   maxUploadMb: asInteger(process.env.MAX_UPLOAD_MB, 8),
   maxImageDimension: asInteger(process.env.MAX_IMAGE_DIMENSION, 1920),
@@ -44,12 +48,10 @@ const config = {
 
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
 
-  // Render environment variables are case-sensitive.
-  // Prefer LIFF_ID, while keeping liffId as a compatibility fallback.
   liffId: (process.env.LIFF_ID || process.env.liffId || '').trim(),
-  lineLoginChannelId: process.env.LINE_LOGIN_CHANNEL_ID || '',
-  lineChannelSecret: process.env.LINE_CHANNEL_SECRET || '',
-  lineChannelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
+  lineLoginChannelId: (process.env.LINE_LOGIN_CHANNEL_ID || process.env.lineLoginChannelId || '').trim(),
+  lineChannelSecret: (process.env.LINE_CHANNEL_SECRET || process.env.lineChannelSecret || '').trim(),
+  lineChannelAccessToken: (process.env.LINE_CHANNEL_ACCESS_TOKEN || process.env.lineChannelAccessToken || '').trim(),
 
   jwtSecret: process.env.JWT_SECRET || '',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
@@ -59,13 +61,14 @@ const config = {
 };
 
 const requiredInAllEnvironments = ['databaseUrl'];
-const requiredInProduction = [
-  'liffId',
-  'lineLoginChannelId',
-  'lineChannelSecret',
-  'lineChannelAccessToken',
-  'jwtSecret',
-];
+const requiredInProduction = ['jwtSecret'];
+
+const optionalLineConfig = {
+  LIFF_ID: config.liffId,
+  LINE_LOGIN_CHANNEL_ID: config.lineLoginChannelId,
+  LINE_CHANNEL_SECRET: config.lineChannelSecret,
+  LINE_CHANNEL_ACCESS_TOKEN: config.lineChannelAccessToken,
+};
 
 for (const key of requiredInAllEnvironments) {
   if (!config[key]) {
@@ -84,10 +87,7 @@ if (config.maxUploadMb < 1 || config.maxUploadMb > 20) {
 if (isProduction) {
   for (const key of requiredInProduction) {
     if (!config[key]) {
-      const envName = key === 'liffId' ? 'LIFF_ID' : key;
-      throw new Error(
-        `Missing required production configuration: ${key} (set ${envName} in Render Environment)`,
-      );
+      throw new Error(`Missing required production configuration: ${key}`);
     }
   }
 
@@ -97,6 +97,12 @@ if (isProduction) {
 
   if (config.devBypassLineAuth) {
     throw new Error('DEV_BYPASS_LINE_AUTH cannot be enabled in production');
+  }
+
+  for (const [envName, value] of Object.entries(optionalLineConfig)) {
+    if (!value) {
+      console.warn(`[config] ${envName} is not set. LINE/LIFF features will remain unavailable until it is added in Render Environment.`);
+    }
   }
 }
 

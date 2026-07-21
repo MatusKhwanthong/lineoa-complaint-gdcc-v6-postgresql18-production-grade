@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: lineoa-complaint-gdcc-v6
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health/live
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lineoa-complaint-db
+          property: connectionString
+      - key: DB_SSL
+        value: "false"
+      - key: DB_SSL_REJECT_UNAUTHORIZED
+        value: "false"
+      - key: POSTGRES_REQUIRED_MAJOR
+        value: "18"
+      - key: TRUST_PROXY
+        value: "1"
+      - key: UPLOAD_DIR
+        value: /tmp/uploads
+      - key: JWT_SECRET
+        generateValue: true
+      - key: LIFF_ID
+        sync: false
+      - key: LINE_LOGIN_CHANNEL_ID
+        sync: false
+      - key: LINE_CHANNEL_SECRET
+        sync: false
+      - key: LINE_CHANNEL_ACCESS_TOKEN
+        sync: false
+
+databases:
+  - name: lineoa-complaint-db
+    plan: free
+    databaseName: complaint_db
+    user: complaint_app
+    postgresMajorVersion: "18"

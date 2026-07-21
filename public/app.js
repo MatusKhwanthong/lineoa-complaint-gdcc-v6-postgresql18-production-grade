@@ -64,7 +64,22 @@ async function api(path, options = {}) {
 }
 
 async function initializeLiff() {
-  const configResponse = await fetch('/api/config');
+  const greeting = $('#userGreeting');
+  const setLineStatus = (message) => {
+    if (greeting) greeting.textContent = message;
+  };
+
+  setLineStatus('กำลังโหลดการตั้งค่า LINE…');
+
+  const configResponse = await fetch('/api/config', {
+    cache: 'no-store',
+    headers: { accept: 'application/json' },
+  });
+
+  if (!configResponse.ok) {
+    throw new Error(`โหลดการตั้งค่าไม่สำเร็จ (${configResponse.status})`);
+  }
+
   const config = await configResponse.json();
 
   state.maxUploadFiles = config.uploadLimits?.maxFiles || 5;
@@ -77,35 +92,62 @@ async function initializeLiff() {
 
   if (config.devBypassLineAuth) {
     state.devUserId = 'dev-user-001';
-    $('#userGreeting').textContent = 'สวัสดี ผู้ใช้ทดสอบ (dev mode)';
-    if (!$('#contactName').value) {
-      $('#contactName').value = 'ผู้ใช้ทดสอบ';
-    }
+    setLineStatus('สวัสดี ผู้ใช้ทดสอบ (dev mode)');
+    if (!$('#contactName').value) $('#contactName').value = 'ผู้ใช้ทดสอบ';
     state.initialized = true;
     return true;
   }
 
   if (!config.liffId) {
-    throw new Error('ผู้ดูแลระบบยังไม่ได้ตั้งค่า LIFF_ID');
+    throw new Error('ไม่พบ LIFF_ID กรุณาตั้งค่าใน Render Environment');
   }
 
-  await liff.init({ liffId: config.liffId });
+  if (typeof window.liff === 'undefined') {
+    throw new Error('โหลด LINE LIFF SDK ไม่สำเร็จ กรุณาปิดแล้วเปิดหน้าใหม่');
+  }
 
-  if (!liff.isLoggedIn()) {
-    liff.login({ redirectUri: window.location.href });
+  setLineStatus('กำลังเริ่มต้น LINE LIFF…');
+
+  const initTimeout = new Promise((_, reject) => {
+    window.setTimeout(() => reject(new Error('LIFF_INIT_TIMEOUT')), 15000);
+  });
+
+  try {
+    await Promise.race([
+      window.liff.init({ liffId: config.liffId }),
+      initTimeout,
+    ]);
+  } catch (error) {
+    const code = error?.code || error?.message || 'UNKNOWN';
+    console.error('LIFF initialization failed', {
+      code: error?.code,
+      message: error?.message,
+      liffIdConfigured: Boolean(config.liffId),
+      currentUrl: window.location.href,
+    });
+    throw new Error(`เริ่มต้น LINE LIFF ไม่สำเร็จ: ${code}`);
+  }
+
+  if (!window.liff.isLoggedIn()) {
+    setLineStatus('กำลังเข้าสู่ระบบ LINE…');
+    const redirectUri = `${window.location.origin}${window.location.pathname}`;
+    window.liff.login({ redirectUri });
     return false;
   }
 
-  state.idToken = liff.getIDToken();
+  state.idToken = window.liff.getIDToken();
   if (!state.idToken) {
-    throw new Error('LIFF ไม่ได้รับ ID Token กรุณาตรวจสอบ scope openid');
+    throw new Error('LIFF ไม่ได้รับ ID Token กรุณาเปิด scope openid');
   }
 
-  const profile = await liff.getProfile();
-  $('#userGreeting').textContent = `สวัสดี ${profile.displayName}`;
+  setLineStatus('กำลังโหลดข้อมูลผู้ใช้ LINE…');
+  const profile = await window.liff.getProfile();
+  setLineStatus(`สวัสดี ${profile.displayName || 'ผู้ใช้ LINE'}`);
+
   if (!$('#contactName').value) {
     $('#contactName').value = profile.displayName || '';
   }
+
   state.initialized = true;
   return true;
 }
@@ -573,59 +615,5 @@ async function main() {
     $('#userGreeting').textContent = 'ไม่สามารถเชื่อมต่อ LINE ได้';
   }
 }
-
-async function initializeLiff() {
-  const loading = document.getElementById('liffLoading');
-
-  try {
-    if (!window.liff) {
-      throw new Error('โหลด LIFF SDK ไม่สำเร็จ');
-    }
-
-    const response = await fetch('/api/config');
-    const config = await response.json();
-
-    console.log('LIFF config:', {
-      hasLiffId: Boolean(config.liffId)
-    });
-
-    if (!config.liffId) {
-      throw new Error('ไม่พบ LIFF_ID จากเซิร์ฟเวอร์');
-    }
-
-    await liff.init({
-      liffId: config.liffId
-    });
-
-    console.log('LIFF initialized', {
-      isInClient: liff.isInClient(),
-      isLoggedIn: liff.isLoggedIn()
-    });
-
-    if (!liff.isLoggedIn()) {
-      liff.login({
-        redirectUri: window.location.origin + window.location.pathname
-      });
-      return;
-    }
-
-    const profile = await liff.getProfile();
-
-    console.log('LINE profile:', profile);
-
-    if (loading) {
-      loading.textContent = `เชื่อมต่อสำเร็จ: ${profile.displayName}`;
-    }
-  } catch (error) {
-    console.error('LIFF error:', error);
-
-    if (loading) {
-      loading.textContent =
-        `เชื่อมต่อ LINE ไม่สำเร็จ: ${error.message}`;
-    }
-  }
-}
-
-document.addEventListener('DOMContentLoaded', initializeLiff);
 
 main();
