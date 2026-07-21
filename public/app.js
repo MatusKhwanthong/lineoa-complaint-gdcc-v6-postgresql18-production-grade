@@ -3,7 +3,8 @@ const state = {
   latitude: null,
   longitude: null,
   initialized: false,
-  googleMapsApiKey: '',
+  map: null,
+  mapMarker: null,
   maxUploadFiles: 5,
   maxFileMb: 8,
   previewUrls: [],
@@ -66,7 +67,6 @@ async function initializeLiff() {
   const configResponse = await fetch('/api/config');
   const config = await configResponse.json();
 
-  state.googleMapsApiKey = config.googleMapsApiKey || '';
   state.maxUploadFiles = config.uploadLimits?.maxFiles || 5;
   state.maxFileMb = config.uploadLimits?.maxFileMb || 8;
 
@@ -103,6 +103,12 @@ async function initializeLiff() {
 
   const profile = await liff.getProfile();
   $('#userGreeting').textContent = `สวัสดี ${profile.displayName}`;
+  if (!$('#contactName').value) {
+    $('#contactName').value = profile.displayName || '';
+  }
+  state.initialized = true;
+  return true;
+}
 
 async function loadCategories() {
   const result = await api('/api/categories');
@@ -121,30 +127,57 @@ function formatThaiDate(value) {
   }).format(new Date(value));
 }
 
-function googleMapsUrl(latitude, longitude) {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    `${latitude},${longitude}`,
-  )}`;
+function openStreetMapUrl(latitude, longitude) {
+  const lat = Number(latitude).toFixed(6);
+  const lng = Number(longitude).toFixed(6);
+  return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lng)}#map=18/${encodeURIComponent(lat)}/${encodeURIComponent(lng)}`;
+}
+
+function ensureMap() {
+  if (state.map) return state.map;
+
+  if (typeof L === 'undefined') {
+    throw new Error('ไม่สามารถโหลดระบบแผนที่ OpenStreetMap ได้');
+  }
+
+  state.map = L.map('mapView', {
+    zoomControl: true,
+    attributionControl: true,
+  });
+
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(state.map);
+
+  state.map.on('click', (event) => {
+    setCoordinates(event.latlng.lat, event.latlng.lng);
+  });
+
+  return state.map;
 }
 
 function renderMap(latitude, longitude) {
   const panel = $('#mapPanel');
-  const frame = $('#mapFrame');
-  const link = $('#openGoogleMaps');
+  const link = $('#openMap');
+  const map = ensureMap();
+  const latLng = [latitude, longitude];
 
-  link.href = googleMapsUrl(latitude, longitude);
+  link.href = openStreetMapUrl(latitude, longitude);
   panel.classList.remove('hidden');
 
-  if (state.googleMapsApiKey) {
-    const query = encodeURIComponent(`${latitude},${longitude}`);
-    const key = encodeURIComponent(state.googleMapsApiKey);
-    frame.src =
-      `https://www.google.com/maps/embed/v1/place?key=${key}&q=${query}&zoom=17&maptype=roadmap`;
-    frame.classList.remove('hidden');
+  if (!state.mapMarker) {
+    state.mapMarker = L.marker(latLng, { draggable: true }).addTo(map);
+    state.mapMarker.on('dragend', () => {
+      const position = state.mapMarker.getLatLng();
+      setCoordinates(position.lat, position.lng);
+    });
   } else {
-    frame.removeAttribute('src');
-    frame.classList.add('hidden');
+    state.mapMarker.setLatLng(latLng);
   }
+
+  map.setView(latLng, 17);
+  window.setTimeout(() => map.invalidateSize(), 0);
 }
 
 function setCoordinates(latitude, longitude) {
@@ -301,11 +334,11 @@ async function loadComplaints() {
 
       if (item.latitude !== null && item.longitude !== null) {
         const mapLink = document.createElement('a');
-        mapLink.href = googleMapsUrl(item.latitude, item.longitude);
+        mapLink.href = openStreetMapUrl(item.latitude, item.longitude);
         mapLink.target = '_blank';
         mapLink.rel = 'noopener';
         mapLink.className = 'secondary link-button';
-        mapLink.textContent = 'เปิด Google Maps';
+        mapLink.textContent = 'เปิด OpenStreetMap';
         actions.append(mapLink);
       }
 
@@ -364,25 +397,87 @@ function setupTabs() {
   });
 }
 
+function getGeolocationErrorMessage(error) {
+  switch (error?.code) {
+    case error.PERMISSION_DENIED:
+      return 'ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง กรุณาเปิดสิทธิ์ Location ในเบราว์เซอร์หรือ LINE แล้วลองใหม่';
+    case error.POSITION_UNAVAILABLE:
+      return 'อุปกรณ์ไม่สามารถระบุตำแหน่งได้ กรุณาเปิด GPS/Wi-Fi แล้วลองใหม่';
+    case error.TIMEOUT:
+      return 'ค้นหาตำแหน่งนานเกินไป กรุณาออกไปบริเวณเปิดโล่งแล้วลองใหม่';
+    default:
+      return 'ไม่สามารถอ่านตำแหน่งปัจจุบันได้';
+  }
+}
+
+function requestCurrentPosition(options) {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+}
+
 function setupLocation() {
-  $('#getLocationButton').addEventListener('click', () => {
+  const button = $('#getLocationButton');
+  const status = $('#locationStatus');
+
+  button.addEventListener('click', async () => {
+    clearAlert();
+
     if (!navigator.geolocation) {
-      showAlert('อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง');
+      showAlert('อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง');
       return;
     }
 
-    $('#locationStatus').textContent = 'กำลังค้นหาตำแหน่ง…';
+    if (!window.isSecureContext) {
+      showAlert('การใช้ตำแหน่งต้องเปิดเว็บผ่าน HTTPS หรือ localhost เท่านั้น');
+      status.textContent = 'ไม่สามารถใช้ตำแหน่งบนการเชื่อมต่อที่ไม่ปลอดภัย';
+      return;
+    }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCoordinates(position.coords.latitude, position.coords.longitude);
-      },
-      () => {
-        $('#locationStatus').textContent = 'ไม่สามารถอ่านตำแหน่งได้';
-        showAlert('กรุณาอนุญาตตำแหน่ง หรือกรอก Latitude และ Longitude ด้วยตนเอง');
-      },
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 30_000 },
-    );
+    button.disabled = true;
+    button.textContent = '⌖ กำลังค้นหาตำแหน่ง…';
+    status.textContent = 'กำลังขอสิทธิ์และค้นหาตำแหน่ง…';
+
+    try {
+      let position;
+      try {
+        position = await requestCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 20_000,
+          maximumAge: 0,
+        });
+      } catch (firstError) {
+        // มือถือบางรุ่นหรือ LIFF อาจหา GPS ความแม่นยำสูงไม่ทัน
+        // จึงลองซ้ำด้วยโหมดทั่วไปก่อนแสดงข้อผิดพลาด
+        if (firstError?.code !== firstError?.PERMISSION_DENIED) {
+          position = await requestCurrentPosition({
+            enableHighAccuracy: false,
+            timeout: 15_000,
+            maximumAge: 60_000,
+          });
+        } else {
+          throw firstError;
+        }
+      }
+
+      const saved = setCoordinates(
+        position.coords.latitude,
+        position.coords.longitude,
+      );
+
+      if (!saved) throw new Error('พิกัดที่ได้รับไม่ถูกต้อง');
+
+      const accuracy = Number(position.coords.accuracy);
+      if (Number.isFinite(accuracy)) {
+        status.textContent += ` ความคลาดเคลื่อนประมาณ ${Math.round(accuracy)} เมตร`;
+      }
+    } catch (error) {
+      status.textContent = 'ไม่สามารถอ่านตำแหน่งได้';
+      showAlert(getGeolocationErrorMessage(error));
+    } finally {
+      button.disabled = false;
+      button.textContent = '⌖ ใช้ตำแหน่งปัจจุบัน';
+    }
   });
 
   $('#latitude').addEventListener('change', syncManualCoordinates);
@@ -453,7 +548,10 @@ function setupForm() {
     clearImagePreviews();
     $('#locationStatus').textContent = 'ยังไม่ได้บันทึกพิกัด';
     $('#mapPanel').classList.add('hidden');
-    $('#mapFrame').removeAttribute('src');
+    if (state.mapMarker && state.map) {
+      state.map.removeLayer(state.mapMarker);
+      state.mapMarker = null;
+    }
     $('#successCard').classList.add('hidden');
     form.classList.remove('hidden');
   });
