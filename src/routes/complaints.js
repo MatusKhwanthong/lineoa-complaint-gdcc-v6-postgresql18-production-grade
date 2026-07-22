@@ -59,16 +59,28 @@ router.post('/', uploadComplaintImages, async (req, res) => {
     client = await pool.connect();
     await client.query('BEGIN');
 
-    const category = await client.query(
-      `SELECT id
-         FROM complaint_categories
-        WHERE id = $1 AND is_active = true`,
+    const categoryResult = await client.query(
+      `SELECT
+          cc.id,
+          cc.department_id,
+          cc.sla_hours
+         FROM complaint_categories cc
+         INNER JOIN departments d
+           ON d.id = cc.department_id
+          AND d.is_active = true
+        WHERE cc.id = $1
+          AND cc.is_active = true`,
       [input.categoryId],
     );
 
-    if (category.rowCount === 0) {
-      throw new ApiError(400, 'ไม่พบหมวดหมู่ที่เลือก');
+    if (categoryResult.rowCount === 0) {
+      throw new ApiError(
+        400,
+        'ไม่พบหมวดหมู่ หรือหมวดหมู่นี้ยังไม่ได้กำหนดหน่วยงานรับผิดชอบ',
+      );
     }
+
+    const category = categoryResult.rows[0];
 
     const sequenceResult = await client.query(
       `SELECT nextval('complaint_reference_seq') AS sequence_value`,
@@ -103,6 +115,7 @@ router.post('/', uploadComplaintImages, async (req, res) => {
           line_display_name,
           line_user_record_id,
           category_id,
+          department_id,
           title,
           description,
           location_text,
@@ -114,7 +127,7 @@ router.post('/', uploadComplaintImages, async (req, res) => {
           privacy_consent_at,
           privacy_consent_version
        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
           current_timestamp, '1.1'
        )
        RETURNING *`,
@@ -123,7 +136,8 @@ router.post('/', uploadComplaintImages, async (req, res) => {
         req.lineUser.userId,
         req.lineUser.displayName,
         lineUserResult.rows[0].id,
-        input.categoryId,
+        category.id,
+        category.department_id,
         input.title,
         input.description,
         input.locationText,
