@@ -496,9 +496,29 @@ router.get('/departments', async (req, res) => {
 });
 
 router.get('/staff', requireRoles('admin', 'supervisor'), async (req, res) => {
+  const values = [];
+  let where = `WHERE su.is_active = true`;
+
+  if (req.admin.role === 'supervisor') {
+    values.push(req.admin.departmentId ?? null);
+    where += ` AND su.department_id = $1`;
+  }
+
   const result = await pool.query(
-    `SELECT id, username, display_name, role FROM staff_users WHERE is_active = true ORDER BY display_name`,
+    `SELECT
+        su.id,
+        su.username,
+        su.display_name,
+        su.role,
+        su.department_id,
+        d.name_th AS department_name
+       FROM staff_users su
+       LEFT JOIN departments d ON d.id = su.department_id
+       ${where}
+      ORDER BY su.display_name`,
+    values,
   );
+
   res.json({ success: true, data: result.rows });
 });
 
@@ -589,28 +609,289 @@ router.patch('/governance/departments/:id', requireRoles('admin'), async (req, r
 });
 
 router.get('/governance/users', requireRoles('admin'), async (req, res) => {
-  const result=await pool.query(`SELECT id,username,display_name,role,is_active,last_login_at,created_at FROM staff_users ORDER BY display_name`);
-  res.json({success:true,data:result.rows});
+  const result = await pool.query(
+    `SELECT
+        su.id,
+        su.username,
+        su.display_name,
+        su.role,
+        su.department_id,
+        su.is_active,
+        su.last_login_at,
+        su.created_at,
+        d.code AS department_code,
+        d.name_th AS department_name
+       FROM staff_users su
+       LEFT JOIN departments d ON d.id = su.department_id
+      ORDER BY su.display_name`,
+  );
+
+  res.json({ success: true, data: result.rows });
 });
 
 router.post('/governance/users', requireRoles('admin'), async (req, res) => {
-  const schema=z.object({username:z.string().trim().min(3).max(100),password:z.string().min(12).max(200),displayName:z.string().trim().min(2).max(200),role:z.enum(['officer','supervisor','admin'])});
-  const parsed=schema.safeParse(req.body); if(!parsed.success) throw new ApiError(400,'ข้อมูลผู้ใช้งานไม่ถูกต้อง',parsed.error.flatten());
-  const hash=await bcrypt.hash(parsed.data.password,12);
-  const result=await pool.query(`INSERT INTO staff_users (username,password_hash,display_name,role) VALUES ($1,$2,$3,$4) RETURNING id,username,display_name,role,is_active,created_at`,[parsed.data.username,hash,parsed.data.displayName,parsed.data.role]);
-  await writeAudit(req,'staff.create','staff_user',result.rows[0].id,{username:parsed.data.username,displayName:parsed.data.displayName,role:parsed.data.role});
-  res.status(201).json({success:true,data:result.rows[0]});
+  const schema = z.object({
+    username: z.string().trim().min(3).max(100),
+    password: z.string().min(12).max(200),
+    displayName: z.string().trim().min(2).max(200),
+    role: z.enum(['officer', 'supervisor', 'admin']),
+    departmentId: z.string().uuid().nullable().optional(),
+  });
+
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    throw new ApiError(
+      400,
+      'ข้อมูลผู้ใช้งานไม่ถูกต้อง',
+      parsed.error.flatten(),
+    );
+  }
+
+  const departmentId =
+    parsed.data.role === 'admin'
+      ? null
+      : parsed.data.departmentId ?? null;
+
+  if (parsed.data.role !== 'admin' && !departmentId) {
+    throw new ApiError(
+      400,
+      'Officer และ Supervisor ต้องกำหนดหน่วยงาน',
+    );
+  }
+
+  if (departmentId) {
+    const departmentResult = await pool.query(
+      `SELECT id
+         FROM departments
+        WHERE id = $1
+          AND is_active = true`,
+      [departmentId],
+    );
+
+    if (departmentResult.rowCount === 0) {
+      throw new ApiError(
+        400,
+        'ไม่พบหน่วยงาน หรือหน่วยงานถูกปิดใช้งาน',
+      );
+    }
+
+    const duplicateResult = await pool.query(
+      `SELECT id
+         FROM staff_users
+        WHERE department_id = $1
+          AND role = $2
+          AND is_active = true
+        LIMIT 1`,
+      [departmentId, parsed.data.role],
+    );
+
+    if (duplicateResult.rowCount > 0) {
+      throw new ApiError(
+        409,
+        parsed.data.role === 'officer'
+          ? 'หน่วยงานนี้มี Officer อยู่แล้ว'
+          : 'หน่วยงานนี้มี Supervisor อยู่แล้ว',
+      );
+    }
+  }
+
+  const hash = await bcrypt.hash(parsed.data.password, 12);
+
+  let result;
+  try {
+    result = await pool.query(
+      `INSERT INTO staff_users (
+          username,
+          password_hash,
+          display_name,
+          role,
+          department_id
+       ) VALUES ($1, $2, $3, $4, $5)
+       RETURNING
+          id,
+          username,
+          display_name,
+          role,
+          department_id,
+          is_active,
+          created_at`,
+      [
+        parsed.data.username,
+        hash,
+        parsed.data.displayName,
+        parsed.data.role,
+        departmentId,
+      ],
+    );
+  } catch (error) {
+    if (error?.code === '23505') {
+      throw new ApiError(
+        409,
+        'ชื่อผู้ใช้นี้มีอยู่แล้ว หรือหน่วยงานนี้มีผู้ใช้งานบทบาทดังกล่าวอยู่แล้ว',
+      );
+    }
+    throw error;
+  }
+
+  await writeAudit(
+    req,
+    'staff.create',
+    'staff_user',
+    result.rows[0].id,
+    {
+      username: parsed.data.username,
+      displayName: parsed.data.displayName,
+      role: parsed.data.role,
+      departmentId,
+    },
+  );
+
+  res.status(201).json({ success: true, data: result.rows[0] });
 });
 
 router.patch('/governance/users/:id', requireRoles('admin'), async (req, res) => {
-  const schema=z.object({displayName:z.string().trim().min(2).max(200),role:z.enum(['officer','supervisor','admin']),isActive:z.boolean(),password:z.string().min(12).max(200).nullable().optional()});
-  const parsed=schema.safeParse(req.body); if(!parsed.success) throw new ApiError(400,'ข้อมูลผู้ใช้งานไม่ถูกต้อง',parsed.error.flatten());
+  const idResult = z.string().uuid().safeParse(req.params.id);
+  if (!idResult.success) {
+    throw new ApiError(400, 'รหัสผู้ใช้งานไม่ถูกต้อง');
+  }
+
+  const schema = z.object({
+    displayName: z.string().trim().min(2).max(200),
+    role: z.enum(['officer', 'supervisor', 'admin']),
+    departmentId: z.string().uuid().nullable().optional(),
+    isActive: z.boolean(),
+    password: z.string().min(12).max(200).nullable().optional(),
+  });
+
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    throw new ApiError(
+      400,
+      'ข้อมูลผู้ใช้งานไม่ถูกต้อง',
+      parsed.error.flatten(),
+    );
+  }
+
+  const departmentId =
+    parsed.data.role === 'admin'
+      ? null
+      : parsed.data.departmentId ?? null;
+
+  if (
+    parsed.data.isActive &&
+    parsed.data.role !== 'admin' &&
+    !departmentId
+  ) {
+    throw new ApiError(
+      400,
+      'Officer และ Supervisor ที่เปิดใช้งานต้องกำหนดหน่วยงาน',
+    );
+  }
+
+  if (departmentId) {
+    const departmentResult = await pool.query(
+      `SELECT id
+         FROM departments
+        WHERE id = $1
+          AND is_active = true`,
+      [departmentId],
+    );
+
+    if (departmentResult.rowCount === 0) {
+      throw new ApiError(
+        400,
+        'ไม่พบหน่วยงาน หรือหน่วยงานถูกปิดใช้งาน',
+      );
+    }
+
+    if (parsed.data.isActive) {
+      const duplicateResult = await pool.query(
+        `SELECT id
+           FROM staff_users
+          WHERE department_id = $1
+            AND role = $2
+            AND is_active = true
+            AND id <> $3
+          LIMIT 1`,
+        [departmentId, parsed.data.role, req.params.id],
+      );
+
+      if (duplicateResult.rowCount > 0) {
+        throw new ApiError(
+          409,
+          parsed.data.role === 'officer'
+            ? 'หน่วยงานนี้มี Officer อยู่แล้ว'
+            : 'หน่วยงานนี้มี Supervisor อยู่แล้ว',
+        );
+      }
+    }
+  }
+
+  const values = [
+    parsed.data.displayName,
+    parsed.data.role,
+    departmentId,
+    parsed.data.isActive,
+  ];
+
+  let passwordSql = '';
+  if (parsed.data.password) {
+    const hash = await bcrypt.hash(parsed.data.password, 12);
+    values.push(hash);
+    passwordSql = `, password_hash = $${values.length}`;
+  }
+
+  values.push(req.params.id);
+
   let result;
-  if(parsed.data.password){const hash=await bcrypt.hash(parsed.data.password,12);result=await pool.query(`UPDATE staff_users SET display_name=$1,role=$2,is_active=$3,password_hash=$4,updated_at=current_timestamp WHERE id=$5 RETURNING id,username,display_name,role,is_active`,[parsed.data.displayName,parsed.data.role,parsed.data.isActive,hash,req.params.id]);}
-  else{result=await pool.query(`UPDATE staff_users SET display_name=$1,role=$2,is_active=$3,updated_at=current_timestamp WHERE id=$4 RETURNING id,username,display_name,role,is_active`,[parsed.data.displayName,parsed.data.role,parsed.data.isActive,req.params.id]);}
-  if(!result.rowCount) throw new ApiError(404,'ไม่พบผู้ใช้งาน');
-  await writeAudit(req,'staff.update','staff_user',req.params.id,{displayName:parsed.data.displayName,role:parsed.data.role,isActive:parsed.data.isActive,passwordChanged:Boolean(parsed.data.password)});
-  res.json({success:true,data:result.rows[0]});
+  try {
+    result = await pool.query(
+      `UPDATE staff_users
+          SET display_name = $1,
+              role = $2,
+              department_id = $3,
+              is_active = $4
+              ${passwordSql},
+              updated_at = current_timestamp
+        WHERE id = $${values.length}
+        RETURNING
+          id,
+          username,
+          display_name,
+          role,
+          department_id,
+          is_active`,
+      values,
+    );
+  } catch (error) {
+    if (error?.code === '23505') {
+      throw new ApiError(
+        409,
+        'หน่วยงานนี้มีผู้ใช้งานบทบาทดังกล่าวอยู่แล้ว',
+      );
+    }
+    throw error;
+  }
+
+  if (!result.rowCount) {
+    throw new ApiError(404, 'ไม่พบผู้ใช้งาน');
+  }
+
+  await writeAudit(
+    req,
+    'staff.update',
+    'staff_user',
+    req.params.id,
+    {
+      displayName: parsed.data.displayName,
+      role: parsed.data.role,
+      departmentId,
+      isActive: parsed.data.isActive,
+      passwordChanged: Boolean(parsed.data.password),
+    },
+  );
+
+  res.json({ success: true, data: result.rows[0] });
 });
 
 router.get('/governance/audit-logs', requireRoles('admin','supervisor'), async (req, res) => {
