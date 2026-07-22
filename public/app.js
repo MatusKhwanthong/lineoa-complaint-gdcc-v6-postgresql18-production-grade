@@ -249,6 +249,7 @@ function renderMap(latitude, longitude) {
   const latLng = [latitude, longitude];
 
   link.href = openStreetMapUrl(latitude, longitude);
+  link.classList.remove('hidden');
   panel.classList.remove('hidden');
 
   if (!state.mapMarker) {
@@ -538,7 +539,13 @@ function showManualLocationPicker() {
 
 function setupLocation() {
   const button = $('#getLocationButton');
+  const manualButton = $('#pickLocationButton');
   const status = $('#locationStatus');
+
+  manualButton?.addEventListener('click', () => {
+    clearAlert();
+    showManualLocationPicker();
+  });
 
   button.addEventListener('click', async () => {
     clearAlert();
@@ -681,11 +688,14 @@ function setupForm() {
     state.latitude = null;
     state.longitude = null;
     clearImagePreviews();
-    $('#locationStatus').textContent = 'ยังไม่ได้บันทึกพิกัด';
-    $('#mapPanel').classList.add('hidden');
+    $('#locationStatus').textContent =
+      'แตะบนแผนที่เพื่อปักหมุด หรือลากหมุดเพื่อปรับตำแหน่ง';
+    $('#openMap').classList.add('hidden');
     if (state.mapMarker && state.map) {
       state.map.removeLayer(state.mapMarker);
       state.mapMarker = null;
+      state.map.setView([9.1382, 99.3217], 13);
+      window.setTimeout(() => state.map.invalidateSize(), 0);
     }
     $('#successCard').classList.add('hidden');
     form.classList.remove('hidden');
@@ -698,6 +708,13 @@ async function main() {
   setupTabs();
   setupLocation();
   setupForm();
+
+  // เตรียมแผนที่ไว้ล่วงหน้า เพื่อให้ผู้ใช้เลือกปักหมุดเองได้ทันที
+  try {
+    ensureMap();
+  } catch (error) {
+    console.error('Map initialization failed:', error);
+  }
 
   let lineReady = false;
   try {
