@@ -134,12 +134,13 @@ router.get('/complaints', async (req, res) => {
   const conditions = [];
   const values = [];
 
-  // Officer และ Supervisor เห็นเฉพาะเรื่องของหน่วยงานตนเอง
   if (req.admin.role !== 'admin') {
     const departmentId = getAdminDepartmentId(req);
+
     if (!departmentId) {
       throw new ApiError(403, 'บัญชีนี้ยังไม่ได้กำหนดหน่วยงาน');
     }
+
     values.push(departmentId);
     conditions.push(`c.department_id = $${values.length}`);
   }
@@ -228,8 +229,6 @@ router.get('/complaints', async (req, res) => {
     values,
   );
 
-  // Admin/Supervisor แก้สถานะได้ตามสิทธิ์เดิม
-  // Officer แก้สถานะได้เฉพาะเรื่องในหน่วยงานของตนเอง
   const rows = result.rows.map((row) => ({
     ...row,
     canEditStatus:
@@ -292,6 +291,7 @@ router.get('/complaints/:id', async (req, res) => {
   if (result.rowCount === 0) throw new ApiError(404, 'ไม่พบรายการ');
 
   const selectedComplaint = result.rows[0];
+
   if (
     req.admin.role !== 'admin' &&
     selectedComplaint.department_id !== getAdminDepartmentId(req)
@@ -356,8 +356,6 @@ router.patch('/complaints/:id/status', async (req, res) => {
     const current = currentResult.rows[0];
     const nextStatus = parsed.data.status;
 
-    // Admin/Supervisor แก้สถานะได้ตามสิทธิ์ระดับสูง
-    // Officer แก้สถานะและกดจบงานได้เฉพาะเรื่องในหน่วยงานของตนเอง
     if (!isElevatedStaff(req.admin)) {
       const isOfficerInSameDepartment =
         req.admin.role === 'officer' &&
@@ -442,8 +440,6 @@ router.patch('/complaints/:id/status', async (req, res) => {
 
 
 router.get('/dashboard', async (req, res) => {
-  // Admin เห็นภาพรวมทุกหน่วยงาน
-  // Officer และ Supervisor เห็นเฉพาะข้อมูลของหน่วยงานตนเอง
   const scopeByDepartment = req.admin.role !== 'admin';
   const departmentId = getAdminDepartmentId(req);
 
@@ -452,10 +448,9 @@ router.get('/dashboard', async (req, res) => {
   }
 
   const values = scopeByDepartment ? [departmentId] : [];
-  const complaintScope = scopeByDepartment ? 'WHERE c.department_id = $1' : '';
-  const complaintScopeAnd = scopeByDepartment ? 'AND c.department_id = $1' : '';
-  const categoryJoinScope = scopeByDepartment ? 'AND c.department_id = $1' : '';
-  const departmentJoinScope = scopeByDepartment ? 'AND c.department_id = $1' : '';
+  const whereScope = scopeByDepartment ? 'WHERE c.department_id = $1' : '';
+  const andScope = scopeByDepartment ? 'AND c.department_id = $1' : '';
+  const joinScope = scopeByDepartment ? 'AND c.department_id = $1' : '';
 
   const [
     summary,
@@ -500,7 +495,7 @@ router.get('/dashboard', async (req, res) => {
           0
         ) AS avg_days
       FROM complaints c
-      ${complaintScope}
+      ${whereScope}
       `,
       values,
     ),
@@ -520,7 +515,7 @@ router.get('/dashboard', async (req, res) => {
       FROM complaints c
       JOIN complaint_categories cc ON cc.id = c.category_id
       LEFT JOIN departments d ON d.id = c.department_id
-      ${complaintScope}
+      ${whereScope}
       ORDER BY c.created_at DESC
       LIMIT 8
       `,
@@ -535,7 +530,7 @@ router.get('/dashboard', async (req, res) => {
       FROM complaint_categories cc
       LEFT JOIN complaints c
         ON c.category_id = cc.id
-        ${categoryJoinScope}
+        ${joinScope}
       WHERE cc.is_active = true
       GROUP BY cc.id, cc.name_th, cc.sort_order
       ORDER BY value DESC, cc.sort_order
@@ -552,7 +547,7 @@ router.get('/dashboard', async (req, res) => {
       FROM departments d
       LEFT JOIN complaints c
         ON c.department_id = d.id
-        ${departmentJoinScope}
+        ${joinScope}
       WHERE d.is_active = true
         ${scopeByDepartment ? 'AND d.id = $1' : ''}
       GROUP BY d.id, d.name_th
@@ -567,7 +562,7 @@ router.get('/dashboard', async (req, res) => {
         c.status::text AS label,
         count(*)::integer AS value
       FROM complaints c
-      ${complaintScope}
+      ${whereScope}
       GROUP BY c.status
       ORDER BY value DESC
       `,
@@ -590,7 +585,7 @@ router.get('/dashboard', async (req, res) => {
       FROM months m
       LEFT JOIN complaints c
         ON date_trunc('month', c.created_at) = m.month_start
-        ${categoryJoinScope}
+        ${joinScope}
       GROUP BY m.month_start
       ORDER BY m.month_start
       `,
@@ -610,7 +605,7 @@ router.get('/dashboard', async (req, res) => {
       FROM complaints c
       LEFT JOIN departments d ON d.id = c.department_id
       WHERE c.status NOT IN ('completed','rejected','cancelled')
-        ${complaintScopeAnd}
+        ${andScope}
         AND (
           c.priority IN ('high','urgent')
           OR (
@@ -645,7 +640,7 @@ router.get('/dashboard', async (req, res) => {
       JOIN complaint_categories cc ON cc.id = c.category_id
       WHERE c.latitude IS NOT NULL
         AND c.longitude IS NOT NULL
-        ${complaintScopeAnd}
+        ${andScope}
       ORDER BY c.created_at DESC
       LIMIT 100
       `,
@@ -680,7 +675,7 @@ router.get('/staff', requireRoles('admin', 'supervisor'), async (req, res) => {
   let where = `WHERE su.is_active = true`;
 
   if (req.admin.role === 'supervisor') {
-    values.push(getAdminDepartmentId(req));
+    values.push(req.admin.departmentId ?? null);
     where += ` AND su.department_id = $1`;
   }
 
@@ -702,44 +697,119 @@ router.get('/staff', requireRoles('admin', 'supervisor'), async (req, res) => {
   res.json({ success: true, data: result.rows });
 });
 
-router.patch('/complaints/:id/assignment', requireRoles('admin', 'supervisor'), async (req, res) => {
-  const idResult = z.string().uuid().safeParse(req.params.id);
-  if (!idResult.success) throw new ApiError(400, 'รหัสรายการไม่ถูกต้อง');
+router.patch(
+  '/complaints/:id/assignment',
+  requireRoles('admin', 'supervisor', 'officer'),
+  async (req, res) => {
+    const idResult = z.string().uuid().safeParse(req.params.id);
+    if (!idResult.success) {
+      throw new ApiError(400, 'รหัสรายการไม่ถูกต้อง');
+    }
 
-  const schema = z.object({
-    departmentId: z.string().uuid().nullable().optional(),
-    staffUserId: z.string().uuid().nullable().optional(),
-    priority: z.enum(['low','normal','high','urgent']).default('normal'),
-    dueAt: z.string().datetime().nullable().optional(),
-    note: z.string().trim().max(2000).nullable().optional(),
-  });
-  const parsed = schema.safeParse(req.body);
-  if (!parsed.success) throw new ApiError(400, 'ข้อมูลมอบหมายไม่ถูกต้อง', parsed.error.flatten());
+    const schema = z.object({
+      departmentId: z.string().uuid().nullable().optional(),
+      priority: z.enum(['low','normal','high','urgent']).default('normal'),
+      dueAt: z.string().datetime().nullable().optional(),
+      note: z.string().trim().max(2000).nullable().optional(),
+    });
 
-  const result = await pool.query(
-    `UPDATE complaints
-        SET department_id = $1,
-            assigned_staff_user_id = $2,
-            priority = $3,
-            due_at = $4,
-            status = CASE WHEN status IN ('new','received') THEN 'assigned'::complaint_status ELSE status END,
-            updated_at = current_timestamp
-      WHERE id = $5
-      RETURNING *`,
-    [parsed.data.departmentId ?? null, parsed.data.staffUserId ?? null, parsed.data.priority, parsed.data.dueAt ?? null, req.params.id],
-  );
-  if (result.rowCount === 0) throw new ApiError(404, 'ไม่พบรายการ');
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ApiError(
+        400,
+        'ข้อมูลการดำเนินงานไม่ถูกต้อง',
+        parsed.error.flatten(),
+      );
+    }
 
-  await pool.query(
-    `INSERT INTO complaint_status_history (
-      complaint_id, old_status, new_status, note, actor_type, actor_staff_user_id
-    ) VALUES ($1, NULL, $2, $3, 'staff', $4)`,
-    [req.params.id, result.rows[0].status, parsed.data.note || 'มอบหมายหน่วยงาน/เจ้าหน้าที่', req.admin.id],
-  );
+    const currentResult = await pool.query(
+      `SELECT id, department_id, status
+         FROM complaints
+        WHERE id = $1`,
+      [req.params.id],
+    );
 
-  await writeAudit(req, 'complaint.assignment.update', 'complaint', req.params.id, parsed.data);
-  res.json({ success: true, message: 'มอบหมายงานเรียบร้อย', data: result.rows[0] });
-});
+    if (currentResult.rowCount === 0) {
+      throw new ApiError(404, 'ไม่พบรายการ');
+    }
+
+    const current = currentResult.rows[0];
+    let departmentId = current.department_id;
+
+    if (req.admin.role === 'officer') {
+      if (
+        !getAdminDepartmentId(req) ||
+        current.department_id !== getAdminDepartmentId(req)
+      ) {
+        throw new ApiError(
+          403,
+          'Officer สามารถแก้ไขได้เฉพาะเรื่องของหน่วยงานตนเอง',
+        );
+      }
+    } else if (Object.hasOwn(parsed.data, 'departmentId')) {
+      departmentId = parsed.data.departmentId;
+    }
+
+    const result = await pool.query(
+      `UPDATE complaints
+          SET department_id = $1,
+              assigned_staff_user_id = NULL,
+              priority = $2,
+              due_at = $3,
+              status = CASE
+                WHEN status IN ('new','received')
+                  THEN 'assigned'::complaint_status
+                ELSE status
+              END,
+              updated_at = current_timestamp
+        WHERE id = $4
+        RETURNING *`,
+      [
+        departmentId,
+        parsed.data.priority,
+        parsed.data.dueAt ?? null,
+        req.params.id,
+      ],
+    );
+
+    await pool.query(
+      `INSERT INTO complaint_status_history (
+        complaint_id,
+        old_status,
+        new_status,
+        note,
+        actor_type,
+        actor_staff_user_id
+      ) VALUES ($1, $2, $3, $4, 'staff', $5)`,
+      [
+        req.params.id,
+        current.status,
+        result.rows[0].status,
+        parsed.data.note || 'บันทึกการดำเนินงาน',
+        req.admin.id,
+      ],
+    );
+
+    await writeAudit(
+      req,
+      'complaint.assignment.update',
+      'complaint',
+      req.params.id,
+      {
+        departmentId,
+        priority: parsed.data.priority,
+        dueAt: parsed.data.dueAt ?? null,
+        note: parsed.data.note ?? null,
+      },
+    );
+
+    res.json({
+      success: true,
+      message: 'บันทึกการดำเนินงานเรียบร้อย',
+      data: result.rows[0],
+    });
+  },
+);
 
 
 router.get('/governance/categories', requireRoles('admin','supervisor'), async (req, res) => {
@@ -1100,7 +1170,6 @@ router.get('/governance/audit-logs', requireRoles('admin','supervisor'), async (
     throw new ApiError(403, 'บัญชีนี้ยังไม่ได้กำหนดหน่วยงาน');
   }
 
-  // Supervisor เห็นเฉพาะ Audit Log ของเรื่องร้องเรียนในหน่วยงานตนเอง
   const result = await pool.query(
     `SELECT
         a.id,
@@ -1127,12 +1196,13 @@ router.get('/governance/audit-logs', requireRoles('admin','supervisor'), async (
 
 router.get('/reports/export.csv', requireRoles('admin', 'supervisor'), async (req, res) => {
   const departmentId = getAdminDepartmentId(req);
-  const values = req.admin.role === 'admin' ? [] : [departmentId];
-  const where = req.admin.role === 'admin' ? '' : 'WHERE c.department_id = $1';
 
   if (req.admin.role !== 'admin' && !departmentId) {
     throw new ApiError(403, 'บัญชีนี้ยังไม่ได้กำหนดหน่วยงาน');
   }
+
+  const values = req.admin.role === 'admin' ? [] : [departmentId];
+  const where = req.admin.role === 'admin' ? '' : 'WHERE c.department_id = $1';
 
   const result=await pool.query(`SELECT c.reference_no,c.title,cc.name_th AS category,c.status,c.priority,c.contact_name,c.contact_phone,c.location_text,d.name_th AS department,su.display_name AS assigned_staff,c.created_at,c.due_at,c.completed_at FROM complaints c JOIN complaint_categories cc ON cc.id=c.category_id LEFT JOIN departments d ON d.id=c.department_id LEFT JOIN staff_users su ON su.id=c.assigned_staff_user_id ${where} ORDER BY c.created_at DESC`, values);
   const headers=['reference_no','title','category','status','priority','contact_name','contact_phone','location_text','department','assigned_staff','created_at','due_at','completed_at'];
