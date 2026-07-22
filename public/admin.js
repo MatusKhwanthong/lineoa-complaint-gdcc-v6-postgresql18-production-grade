@@ -70,19 +70,76 @@ function setGovernanceTab(mode){governanceMode=mode;document.querySelectorAll('.
 async function loadGovernance(mode='categories'){setGovernanceTab(mode);try{
   if(mode==='categories'){const r=await api('/api/admin/governance/categories');$('#categoryGovernanceTable').innerHTML=governanceTable(['รหัส','ชื่อหมวดหมู่','SLA','สถานะ','จัดการ'],r.data.map(x=>`<tr><td class="case-ref">${escapeHtml(x.code)}</td><td>${escapeHtml(x.name_th)}</td><td>${x.sla_hours} ชม.</td><td>${x.is_active?'<span class="v3-badge status-completed">เปิดใช้งาน</span>':'<span class="v3-badge status-cancelled">ปิดใช้งาน</span>'}</td><td><button class="governance-edit edit-category" data-id="${x.id}" data-json='${escapeHtml(JSON.stringify(x))}'>แก้ไข</button></td></tr>`));document.querySelectorAll('.edit-category').forEach(b=>b.onclick=()=>openGovernanceDialog('category',JSON.parse(b.dataset.json)))}
   if(mode==='departments'){const r=await api('/api/admin/governance/departments');const isAdmin=currentUser?.role==='admin';const headers=isAdmin?['รหัส','ชื่อหน่วยงาน','สถานะ','จัดการ']:['รหัส','ชื่อหน่วยงาน','สถานะ'];$('#departmentGovernanceTable').innerHTML=governanceTable(headers,r.data.map(x=>`<tr><td class="case-ref">${escapeHtml(x.code)}</td><td>${escapeHtml(x.name_th)}</td><td>${x.is_active?'<span class="v3-badge status-completed">เปิดใช้งาน</span>':'<span class="v3-badge status-cancelled">ปิดใช้งาน</span>'}</td>${isAdmin?`<td><button class="governance-edit edit-department" data-id="${x.id}" data-json='${escapeHtml(JSON.stringify(x))}'>แก้ไข</button></td>`:''}</tr>`));if(isAdmin)document.querySelectorAll('.edit-department').forEach(b=>b.onclick=()=>openGovernanceDialog('department',JSON.parse(b.dataset.json)))}
-  if(mode==='users'){if(currentUser?.role!=='admin'){throw new Error('เฉพาะผู้ดูแลระบบเท่านั้นที่ดูผู้ใช้งานได้')}const r=await api('/api/admin/governance/users');$('#userGovernanceTable').innerHTML=governanceTable(['ชื่อผู้ใช้','ชื่อแสดงผล','สิทธิ์','เข้าสู่ระบบล่าสุด','สถานะ','จัดการ'],r.data.map(x=>`<tr><td class="case-ref">${escapeHtml(x.username)}</td><td>${escapeHtml(x.display_name)}</td><td>${escapeHtml(x.role)}</td><td>${fmt(x.last_login_at)}</td><td>${x.is_active?'<span class="v3-badge status-completed">ใช้งาน</span>':'<span class="v3-badge status-cancelled">ระงับ</span>'}</td><td><button class="governance-edit edit-user" data-json='${escapeHtml(JSON.stringify(x))}'>แก้ไข</button></td></tr>`));document.querySelectorAll('.edit-user').forEach(b=>b.onclick=()=>openGovernanceDialog('user',JSON.parse(b.dataset.json)))}
+  if(mode==='users'){if(currentUser?.role!=='admin'){throw new Error('เฉพาะผู้ดูแลระบบเท่านั้นที่ดูผู้ใช้งานได้')}const r=await api('/api/admin/governance/users');$('#userGovernanceTable').innerHTML=governanceTable(['ชื่อผู้ใช้','ชื่อแสดงผล','สิทธิ์','หน่วยงาน','เข้าสู่ระบบล่าสุด','สถานะ','จัดการ'],r.data.map(x=>`<tr><td class="case-ref">${escapeHtml(x.username)}</td><td>${escapeHtml(x.display_name)}</td><td>${escapeHtml(x.role)}</td><td>${escapeHtml(x.department_name||'-')}</td><td>${fmt(x.last_login_at)}</td><td>${x.is_active?'<span class="v3-badge status-completed">ใช้งาน</span>':'<span class="v3-badge status-cancelled">ระงับ</span>'}</td><td><button class="governance-edit edit-user" data-json='${escapeHtml(JSON.stringify(x))}'>แก้ไข</button></td></tr>`));document.querySelectorAll('.edit-user').forEach(b=>b.onclick=()=>openGovernanceDialog('user',JSON.parse(b.dataset.json)))}
   if(mode==='audit'){const r=await api('/api/admin/governance/audit-logs');$('#auditGovernanceTable').innerHTML=governanceTable(['วันเวลา','ผู้ดำเนินการ','กิจกรรม','ประเภท','รายละเอียด'],r.data.map(x=>`<tr><td>${fmt(x.created_at)}</td><td>${escapeHtml(x.actor_name||'ระบบ')}</td><td class="case-ref">${escapeHtml(x.action)}</td><td>${escapeHtml(x.entity_type)}</td><td><div class="audit-detail" title="${escapeHtml(JSON.stringify(x.detail))}">${escapeHtml(JSON.stringify(x.detail))}</div></td></tr>`))}
 }catch(e){show('#pageAlert',e.message)}}
 function dialogField(label,name,type='text',value='',extra=''){return `<label>${label}<input name="${name}" type="${type}" value="${escapeHtml(value??'')}" ${extra}></label>`}
 function openGovernanceDialog(type,data=null){if(type==='department'&&currentUser?.role!=='admin'){show('#pageAlert','Supervisor มีสิทธิ์ดูข้อมูลหน่วยงานเท่านั้น');return}governanceEditing={type,data};const fields=$('#governanceDialogFields');const title=$('#governanceDialogTitle');
   if(type==='category'){title.textContent=data?'แก้ไขหมวดหมู่':'เพิ่มหมวดหมู่';fields.innerHTML=(data?'':dialogField('รหัสหมวดหมู่','code','text','','required pattern="[A-Z0-9_]+"'))+dialogField('ชื่อหมวดหมู่','nameTh','text',data?.name_th||'','required')+dialogField('SLA (ชั่วโมง)','slaHours','number',data?.sla_hours||72,'required min="1"')+(data?`<label>สถานะ<select name="isActive"><option value="true" ${data.is_active?'selected':''}>เปิดใช้งาน</option><option value="false" ${!data.is_active?'selected':''}>ปิดใช้งาน</option></select></label>`:'')}
   if(type==='department'){title.textContent=data?'แก้ไขหน่วยงาน':'เพิ่มหน่วยงาน';fields.innerHTML=(data?'':dialogField('รหัสหน่วยงาน','code','text','','required pattern="[A-Z0-9_]+"'))+dialogField('ชื่อหน่วยงาน','nameTh','text',data?.name_th||'','required')+(data?`<label>สถานะ<select name="isActive"><option value="true" ${data.is_active?'selected':''}>เปิดใช้งาน</option><option value="false" ${!data.is_active?'selected':''}>ปิดใช้งาน</option></select></label>`:'')}
-  if(type==='user'){title.textContent=data?'แก้ไขผู้ใช้งาน':'เพิ่มผู้ใช้งาน';fields.innerHTML=(data?'':dialogField('ชื่อผู้ใช้','username','text','','required'))+dialogField('ชื่อแสดงผล','displayName','text',data?.display_name||'','required')+`<label>สิทธิ์<select name="role"><option value="officer" ${data?.role==='officer'?'selected':''}>Officer</option><option value="supervisor" ${data?.role==='supervisor'?'selected':''}>Supervisor</option><option value="admin" ${data?.role==='admin'?'selected':''}>Admin</option></select></label>`+dialogField(data?'รหัสผ่านใหม่ (เว้นว่างหากไม่เปลี่ยน)':'รหัสผ่านอย่างน้อย 12 ตัว','password','password','',''+(data?'':'required minlength="12"'))+(data?`<label>สถานะ<select name="isActive"><option value="true" ${data.is_active?'selected':''}>ใช้งาน</option><option value="false" ${!data.is_active?'selected':''}>ระงับ</option></select></label>`:'')}
+  if(type==='user'){
+    title.textContent=data?'แก้ไขผู้ใช้งาน':'เพิ่มผู้ใช้งาน';
+
+    const departmentOptions=[
+      '<option value="">เลือกหน่วยงาน</option>',
+      ...departments.map(d=>`<option value="${d.id}" ${d.id===data?.department_id?'selected':''}>${escapeHtml(d.name_th)}</option>`)
+    ].join('');
+
+    fields.innerHTML=
+      (data?'':dialogField('ชื่อผู้ใช้','username','text','','required'))+
+      dialogField('ชื่อแสดงผล','displayName','text',data?.display_name||'','required')+
+      `<label>สิทธิ์
+        <select name="role" id="governanceUserRole">
+          <option value="officer" ${data?.role==='officer'?'selected':''}>Officer</option>
+          <option value="supervisor" ${data?.role==='supervisor'?'selected':''}>Supervisor</option>
+          <option value="admin" ${data?.role==='admin'?'selected':''}>Admin</option>
+        </select>
+      </label>`+
+      `<label id="governanceDepartmentField">หน่วยงาน
+        <select name="departmentId" id="governanceDepartmentId">
+          ${departmentOptions}
+        </select>
+        <small class="muted">Officer และ Supervisor ต้องกำหนดหน่วยงาน</small>
+      </label>`+
+      dialogField(data?'รหัสผ่านใหม่ (เว้นว่างหากไม่เปลี่ยน)':'รหัสผ่านอย่างน้อย 12 ตัว','password','password','',''+(data?'':'required minlength="12"'))+
+      (data?`<label>สถานะ<select name="isActive"><option value="true" ${data.is_active?'selected':''}>ใช้งาน</option><option value="false" ${!data.is_active?'selected':''}>ระงับ</option></select></label>`:'');
+
+    const roleSelect=fields.querySelector('#governanceUserRole');
+    const departmentField=fields.querySelector('#governanceDepartmentField');
+    const departmentSelect=fields.querySelector('#governanceDepartmentId');
+
+    const syncDepartmentField=()=>{
+      const needsDepartment=roleSelect.value!=='admin';
+      departmentField.classList.toggle('hidden',!needsDepartment);
+      departmentSelect.required=needsDepartment;
+      if(!needsDepartment)departmentSelect.value='';
+    };
+
+    roleSelect.addEventListener('change',syncDepartmentField);
+    syncDepartmentField();
+  }
   $('#governanceDialog').showModal()}
 async function saveGovernance(){if(governanceEditing?.type==='department'&&currentUser?.role!=='admin')throw new Error('Supervisor ไม่มีสิทธิ์เพิ่มหรือแก้ไขหน่วยงาน');const fd=new FormData($('#governanceForm'));const v=Object.fromEntries(fd.entries());const {type,data}=governanceEditing;let path,method='POST',payload;
   if(type==='category'){path=data?`/api/admin/governance/categories/${data.id}`:'/api/admin/governance/categories';if(data)method='PATCH';payload={nameTh:v.nameTh,slaHours:Number(v.slaHours),...(data?{isActive:v.isActive==='true'}:{code:v.code})}}
   if(type==='department'){path=data?`/api/admin/governance/departments/${data.id}`:'/api/admin/governance/departments';if(data)method='PATCH';payload={nameTh:v.nameTh,...(data?{isActive:v.isActive==='true'}:{code:v.code})}}
-  if(type==='user'){path=data?`/api/admin/governance/users/${data.id}`:'/api/admin/governance/users';if(data)method='PATCH';payload={displayName:v.displayName,role:v.role,...(data?{isActive:v.isActive==='true',password:v.password||null}:{username:v.username,password:v.password})}}
+  if(type==='user'){
+    path=data?`/api/admin/governance/users/${data.id}`:'/api/admin/governance/users';
+    if(data)method='PATCH';
+
+    const departmentId=v.role==='admin'?null:(v.departmentId||null);
+    if(v.role!=='admin'&&!departmentId){
+      throw new Error('กรุณาเลือกหน่วยงานสำหรับ Officer หรือ Supervisor');
+    }
+
+    payload={
+      displayName:v.displayName,
+      role:v.role,
+      departmentId,
+      ...(data
+        ?{isActive:v.isActive==='true',password:v.password||null}
+        :{username:v.username,password:v.password})
+    };
+  }
   await api(path,{method,body:JSON.stringify(payload)});$('#governanceDialog').close();show('#pageAlert','บันทึกข้อมูลเรียบร้อย','success');await loadGovernance(governanceMode)}
 async function exportCsv(){const r=await fetch('/api/admin/reports/export.csv',{headers:{authorization:`Bearer ${token}`}});if(!r.ok)throw new Error('ไม่สามารถส่งออกรายงานได้');const blob=await r.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`complaints-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url)}
 
