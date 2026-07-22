@@ -7,7 +7,7 @@
   <title>Smart City Complaint Command Center</title>
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/admin-v3.css">
-  <script type="module" src="/admin.js?v=20260722-role-scope-dashboard-fix-1"></script>
+  <script type="module" src="/admin.js?v=20260722-department-user-ui-fix-2"></script>
 </head>
 <body class="admin-v3-body">
   <section id="loginPanel" class="v3-login">
@@ -59,7 +59,7 @@
       </section>
 
       <section id="complaintsView" class="admin-view hidden">
-        <article class="v3-card complaint-center-card"><div class="complaint-toolbar"><div class="search-box"><span>⌕</span><input id="searchInput" placeholder="ค้นหาเลขรับเรื่อง ชื่อเรื่อง ชื่อผู้ร้อง หรือเบอร์โทร"></div><select id="statusFilter"><option value="">ทุกสถานะ</option><option value="new">รับเรื่องใหม่</option><option value="received">รับเรื่องแล้ว</option><option value="assigned">มอบหมายแล้ว</option><option value="in_progress">กำลังดำเนินการ</option><option value="waiting_for_info">รอข้อมูลเพิ่มเติม</option><option value="completed">เสร็จสิ้น</option><option value="rejected">ไม่รับดำเนินการ</option><option value="cancelled">ยกเลิก</option></select><label class="mine-toggle"><input id="mineFilter" type="checkbox"> เฉพาะที่มอบหมายให้ฉัน</label><button id="searchButton" class="v3-primary" type="button">ค้นหา</button></div><div id="complaintTable"></div><div id="pagination" class="v3-pagination"></div></article>
+        <article class="v3-card complaint-center-card"><div class="complaint-toolbar"><div class="search-box"><span>⌕</span><input id="searchInput" placeholder="ค้นหาเลขรับเรื่อง ชื่อเรื่อง ชื่อผู้ร้อง หรือเบอร์โทร"></div><select id="statusFilter"><option value="">ทุกสถานะ</option><option value="new">รับเรื่องใหม่</option><option value="received">รับเรื่องแล้ว</option><option value="assigned">มอบหมายแล้ว</option><option value="in_progress">กำลังดำเนินการ</option><option value="waiting_for_info">รอข้อมูลเพิ่มเติม</option><option value="completed">เสร็จสิ้น</option><option value="rejected">ไม่รับดำเนินการ</option><option value="cancelled">ยกเลิก</option></select><button id="searchButton" class="v3-primary" type="button">ค้นหา</button></div><div id="complaintTable"></div><div id="pagination" class="v3-pagination"></div></article>
       </section>
 
       <section id="mapView" class="admin-view hidden">
@@ -87,7 +87,7 @@
           <div id="departmentGovernanceTable"></div>
         </section>
         <section id="governanceUsers" class="governance-panel v3-card hidden">
-          <div class="v3-card-head"><div><p class="overline">ACCESS CONTROL</p><h2>ผู้ใช้งานและสิทธิ์</h2></div><button id="addUserButton" class="v3-primary">เพิ่มผู้ใช้งาน</button></div>
+          <div class="v3-card-head"><div><p class="overline">ACCESS CONTROL</p><h2>ผู้ใช้งานและสิทธิ์</h2></div><button id="addUserButton" class="v3-primary hidden" data-admin-only>เพิ่มผู้ใช้งาน</button></div>
           <div id="userGovernanceTable"></div>
         </section>
         <section id="governanceAudit" class="governance-panel v3-card hidden">
