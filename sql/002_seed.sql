@@ -8,5 +8,3 @@ INSERT INTO complaint_categories (code, name_th, sort_order) VALUES
   ('ENVIRONMENT', 'สิ่งแวดล้อม', 70),
   ('OTHER', 'เรื่องอื่น ๆ', 100)
 ON CONFLICT (code) DO NOTHING;
-
-INSERT INTO complaints (category_id, department_id)VALUES ($1, $2);
