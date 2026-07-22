@@ -7,7 +7,7 @@
   <title>Smart City Complaint Command Center</title>
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/admin-v3.css">
-  <script type="module" src="/admin.js?v=20260722-department-user-ui-fix-2"></script>
+  <script type="module" src="/admin.js?v=20260722-mobile-logout-2"></script>
 </head>
 <body class="admin-v3-body">
   <section id="loginPanel" class="v3-login">
@@ -43,7 +43,7 @@
     </aside>
 
     <main class="v3-main">
-      <header class="v3-header"><div><p class="overline">SMART CITY OPERATIONS</p><h1 id="pageTitle">Command Center</h1><p id="pageSubtitle">ภาพรวมสถานการณ์และประสิทธิภาพการให้บริการประชาชน</p></div><div class="v3-header-actions"><div class="date-pill"><span>◷</span><b id="todayLabel"></b></div><button id="refreshAll" class="v3-icon-button" title="รีเฟรช">↻</button></div></header>
+      <header class="v3-header"><div><p class="overline">SMART CITY OPERATIONS</p><h1 id="pageTitle">Command Center</h1><p id="pageSubtitle">ภาพรวมสถานการณ์และประสิทธิภาพการให้บริการประชาชน</p></div><div class="v3-header-actions"><div class="date-pill"><span>◷</span><b id="todayLabel"></b></div><button id="refreshAll" class="v3-icon-button" title="รีเฟรช" aria-label="รีเฟรช">↻</button><button id="mobileLogoutButton" class="v3-mobile-logout" type="button" aria-label="ออกจากระบบ">ออกจากระบบ</button></div></header>
       <div id="pageAlert" class="alert hidden"></div>
 
       <section id="dashboardView" class="admin-view">

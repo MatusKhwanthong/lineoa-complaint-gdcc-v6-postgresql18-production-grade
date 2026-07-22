@@ -327,3 +327,46 @@ input,select,textarea{
     grid-template-columns:1fr;
   }
 }
+
+
+/* Mobile logout button */
+.v3-mobile-logout{
+  display:none;
+  align-items:center;
+  justify-content:center;
+  min-height:44px;
+  border:1px solid #efc6c6;
+  border-radius:13px;
+  padding:.7rem .9rem;
+  background:#fff3f3;
+  color:#b22f2f;
+  font-weight:900;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.v3-mobile-logout:active{
+  transform:translateY(1px);
+}
+@media(max-width:900px){
+  .v3-mobile-logout{
+    display:inline-flex;
+  }
+}
+@media(max-width:600px){
+  .v3-header-actions{
+    grid-template-columns:minmax(0,1fr) 44px auto;
+  }
+  .v3-mobile-logout{
+    padding:.65rem .75rem;
+    font-size:.82rem;
+  }
+}
+@media(max-width:380px){
+  .v3-header-actions{
+    grid-template-columns:minmax(0,1fr) 44px;
+  }
+  .v3-mobile-logout{
+    grid-column:1 / -1;
+    width:100%;
+  }
+}
