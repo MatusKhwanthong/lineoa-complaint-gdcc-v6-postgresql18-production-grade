@@ -17,11 +17,7 @@ export const complaintCreateSchema = z.object({
     .trim()
     .min(10, 'กรุณาระบุรายละเอียดอย่างน้อย 10 ตัวอักษร')
     .max(5000),
-  locationText: z
-    .string()
-    .trim()
-    .min(3, 'กรุณาระบุสถานที่เกิดเหตุ')
-    .max(500),
+  locationText: optionalText(500),
   latitude: z.number().min(-90, 'ละติจูดไม่ถูกต้อง').max(90, 'ละติจูดไม่ถูกต้อง'),
   longitude: z.number().min(-180, 'ลองจิจูดไม่ถูกต้อง').max(180, 'ลองจิจูดไม่ถูกต้อง'),
   contactName: z.string().trim().min(2, 'กรุณาระบุชื่อผู้ติดต่อ').max(200),
