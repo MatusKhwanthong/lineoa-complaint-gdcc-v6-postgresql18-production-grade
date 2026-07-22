@@ -21,6 +21,7 @@ export function requireAdmin(req, res, next) {
       username: payload.username,
       role: payload.role,
       displayName: payload.displayName,
+      departmentId: payload.departmentId ?? null,
     };
 
     return next();

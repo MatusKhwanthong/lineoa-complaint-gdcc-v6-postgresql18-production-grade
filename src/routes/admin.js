@@ -5,7 +5,7 @@ import { z } from 'zod';
 import config from '../config.js';
 import { pool } from '../db.js';
 import { ApiError } from '../errors.js';
-import { requireAdmin, requireRoles, isElevatedStaff } from '../middleware/admin-auth.js';
+import { requireAdmin, requireRoles } from '../middleware/admin-auth.js';
 import { adminLoginSchema, statusUpdateSchema } from '../validators.js';
 import { notifyStatusChanged } from '../services/notifications.js';
 import { sendStoredImage } from '../services/uploads.js';
@@ -14,6 +14,14 @@ const router = Router();
 
 function getAdminDepartmentId(req) {
   return req.admin?.departmentId ?? req.admin?.department_id ?? null;
+}
+
+function isSameDepartmentStaff(req, departmentId) {
+  return (
+    ['officer', 'supervisor'].includes(req.admin?.role) &&
+    Boolean(getAdminDepartmentId(req)) &&
+    departmentId === getAdminDepartmentId(req)
+  );
 }
 
 
@@ -106,13 +114,26 @@ router.get('/attachments/:id', async (req, res) => {
   if (!idResult.success) throw new ApiError(400, 'รหัสรูปภาพไม่ถูกต้อง');
 
   const result = await pool.query(
-    `SELECT id, storage_key, mime_type
-       FROM complaint_attachments
-      WHERE id = $1`,
+    `SELECT
+        a.id,
+        a.storage_key,
+        a.mime_type,
+        c.department_id
+       FROM complaint_attachments a
+       JOIN complaints c ON c.id = a.complaint_id
+      WHERE a.id = $1`,
     [req.params.id],
   );
 
   if (result.rowCount === 0) throw new ApiError(404, 'ไม่พบรูปภาพ');
+
+  if (
+    req.admin.role !== 'admin' &&
+    !isSameDepartmentStaff(req, result.rows[0].department_id)
+  ) {
+    throw new ApiError(403, 'ไม่มีสิทธิ์ดูรูปภาพของหน่วยงานอื่น');
+  }
+
   return sendStoredImage(res, result.rows[0]);
 });
 
@@ -232,12 +253,8 @@ router.get('/complaints', async (req, res) => {
   const rows = result.rows.map((row) => ({
     ...row,
     canEditStatus:
-      isElevatedStaff(req.admin) ||
-      (
-        req.admin.role === 'officer' &&
-        Boolean(getAdminDepartmentId(req)) &&
-        row.department_id === getAdminDepartmentId(req)
-      ),
+      req.admin.role === 'admin' ||
+      isSameDepartmentStaff(req, row.department_id),
   }));
 
   res.json({
@@ -316,12 +333,8 @@ router.get('/complaints/:id', async (req, res) => {
 
   const complaint = result.rows[0];
   const canEditStatus =
-    isElevatedStaff(req.admin) ||
-    (
-      req.admin.role === 'officer' &&
-      Boolean(getAdminDepartmentId(req)) &&
-      complaint.department_id === getAdminDepartmentId(req)
-    );
+    req.admin.role === 'admin' ||
+    isSameDepartmentStaff(req, complaint.department_id);
 
   res.json({
     success: true,
@@ -356,18 +369,14 @@ router.patch('/complaints/:id/status', async (req, res) => {
     const current = currentResult.rows[0];
     const nextStatus = parsed.data.status;
 
-    if (!isElevatedStaff(req.admin)) {
-      const isOfficerInSameDepartment =
-        req.admin.role === 'officer' &&
-        Boolean(getAdminDepartmentId(req)) &&
-        current.department_id === getAdminDepartmentId(req);
-
-      if (!isOfficerInSameDepartment) {
-        throw new ApiError(
-          403,
-          'Officer สามารถอัปเดตสถานะได้เฉพาะเรื่องของหน่วยงานตนเอง',
-        );
-      }
+    if (
+      req.admin.role !== 'admin' &&
+      !isSameDepartmentStaff(req, current.department_id)
+    ) {
+      throw new ApiError(
+        403,
+        'Officer และ Supervisor สามารถอัปเดตสถานะได้เฉพาะเรื่องของหน่วยงานตนเอง',
+      );
     }
 
     if (nextStatus !== current.status) {
@@ -736,18 +745,29 @@ router.patch(
     const current = currentResult.rows[0];
     let departmentId = current.department_id;
 
-    if (req.admin.role === 'officer') {
+    if (req.admin.role === 'admin') {
+      if (Object.hasOwn(parsed.data, 'departmentId')) {
+        departmentId = parsed.data.departmentId;
+      }
+    } else {
+      if (!isSameDepartmentStaff(req, current.department_id)) {
+        throw new ApiError(
+          403,
+          'Officer และ Supervisor สามารถแก้ไขได้เฉพาะเรื่องของหน่วยงานตนเอง',
+        );
+      }
+
       if (
-        !getAdminDepartmentId(req) ||
-        current.department_id !== getAdminDepartmentId(req)
+        Object.hasOwn(parsed.data, 'departmentId') &&
+        parsed.data.departmentId !== current.department_id
       ) {
         throw new ApiError(
           403,
-          'Officer สามารถแก้ไขได้เฉพาะเรื่องของหน่วยงานตนเอง',
+          'เฉพาะ Admin เท่านั้นที่เปลี่ยนหน่วยงานของเรื่องร้องเรียนได้',
         );
       }
-    } else if (Object.hasOwn(parsed.data, 'departmentId')) {
-      departmentId = parsed.data.departmentId;
+
+      departmentId = current.department_id;
     }
 
     const result = await pool.query(
