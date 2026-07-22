@@ -12,6 +12,10 @@ import { sendStoredImage } from '../services/uploads.js';
 
 const router = Router();
 
+function getAdminDepartmentId(req) {
+  return req.admin?.departmentId ?? req.admin?.department_id ?? null;
+}
+
 
 async function writeAudit(req, action, entityType, entityId = null, detail = {}) {
   await pool.query(
@@ -130,6 +134,16 @@ router.get('/complaints', async (req, res) => {
   const conditions = [];
   const values = [];
 
+  // Officer และ Supervisor เห็นเฉพาะเรื่องของหน่วยงานตนเอง
+  if (req.admin.role !== 'admin') {
+    const departmentId = getAdminDepartmentId(req);
+    if (!departmentId) {
+      throw new ApiError(403, 'บัญชีนี้ยังไม่ได้กำหนดหน่วยงาน');
+    }
+    values.push(departmentId);
+    conditions.push(`c.department_id = $${values.length}`);
+  }
+
   if (status) {
     values.push(status);
     conditions.push(`c.status::text = $${values.length}`);
@@ -222,8 +236,8 @@ router.get('/complaints', async (req, res) => {
       isElevatedStaff(req.admin) ||
       (
         req.admin.role === 'officer' &&
-        Boolean(req.admin.departmentId) &&
-        row.department_id === req.admin.departmentId
+        Boolean(getAdminDepartmentId(req)) &&
+        row.department_id === getAdminDepartmentId(req)
       ),
   }));
 
@@ -277,6 +291,14 @@ router.get('/complaints/:id', async (req, res) => {
 
   if (result.rowCount === 0) throw new ApiError(404, 'ไม่พบรายการ');
 
+  const selectedComplaint = result.rows[0];
+  if (
+    req.admin.role !== 'admin' &&
+    selectedComplaint.department_id !== getAdminDepartmentId(req)
+  ) {
+    throw new ApiError(403, 'ไม่มีสิทธิ์ดูเรื่องร้องเรียนของหน่วยงานอื่น');
+  }
+
   const history = await pool.query(
     `SELECT
         h.old_status,
@@ -297,8 +319,8 @@ router.get('/complaints/:id', async (req, res) => {
     isElevatedStaff(req.admin) ||
     (
       req.admin.role === 'officer' &&
-      Boolean(req.admin.departmentId) &&
-      complaint.department_id === req.admin.departmentId
+      Boolean(getAdminDepartmentId(req)) &&
+      complaint.department_id === getAdminDepartmentId(req)
     );
 
   res.json({
@@ -339,8 +361,8 @@ router.patch('/complaints/:id/status', async (req, res) => {
     if (!isElevatedStaff(req.admin)) {
       const isOfficerInSameDepartment =
         req.admin.role === 'officer' &&
-        Boolean(req.admin.departmentId) &&
-        current.department_id === req.admin.departmentId;
+        Boolean(getAdminDepartmentId(req)) &&
+        current.department_id === getAdminDepartmentId(req);
 
       if (!isOfficerInSameDepartment) {
         throw new ApiError(
@@ -423,7 +445,7 @@ router.get('/dashboard', async (req, res) => {
   // Admin เห็นภาพรวมทุกหน่วยงาน
   // Officer และ Supervisor เห็นเฉพาะข้อมูลของหน่วยงานตนเอง
   const scopeByDepartment = req.admin.role !== 'admin';
-  const departmentId = req.admin.departmentId ?? null;
+  const departmentId = getAdminDepartmentId(req);
 
   if (scopeByDepartment && !departmentId) {
     throw new ApiError(403, 'บัญชีนี้ยังไม่ได้กำหนดหน่วยงาน');
@@ -658,7 +680,7 @@ router.get('/staff', requireRoles('admin', 'supervisor'), async (req, res) => {
   let where = `WHERE su.is_active = true`;
 
   if (req.admin.role === 'supervisor') {
-    values.push(req.admin.departmentId ?? null);
+    values.push(getAdminDepartmentId(req));
     where += ` AND su.department_id = $1`;
   }
 
@@ -1053,12 +1075,66 @@ router.patch('/governance/users/:id', requireRoles('admin'), async (req, res) =>
 });
 
 router.get('/governance/audit-logs', requireRoles('admin','supervisor'), async (req, res) => {
-  const result=await pool.query(`SELECT a.id,a.action,a.entity_type,a.entity_id,a.detail,a.ip_address,a.created_at,s.display_name AS actor_name FROM audit_logs a LEFT JOIN staff_users s ON s.id=a.actor_staff_user_id ORDER BY a.created_at DESC LIMIT 200`);
-  res.json({success:true,data:result.rows});
+  if (req.admin.role === 'admin') {
+    const result = await pool.query(
+      `SELECT
+          a.id,
+          a.action,
+          a.entity_type,
+          a.entity_id,
+          a.detail,
+          a.ip_address,
+          a.created_at,
+          s.display_name AS actor_name
+       FROM audit_logs a
+       LEFT JOIN staff_users s ON s.id = a.actor_staff_user_id
+       ORDER BY a.created_at DESC
+       LIMIT 200`,
+    );
+
+    return res.json({ success: true, data: result.rows });
+  }
+
+  const departmentId = getAdminDepartmentId(req);
+  if (!departmentId) {
+    throw new ApiError(403, 'บัญชีนี้ยังไม่ได้กำหนดหน่วยงาน');
+  }
+
+  // Supervisor เห็นเฉพาะ Audit Log ของเรื่องร้องเรียนในหน่วยงานตนเอง
+  const result = await pool.query(
+    `SELECT
+        a.id,
+        a.action,
+        a.entity_type,
+        a.entity_id,
+        a.detail,
+        a.ip_address,
+        a.created_at,
+        s.display_name AS actor_name
+     FROM audit_logs a
+     JOIN complaints c
+       ON a.entity_type = 'complaint'
+      AND a.entity_id = c.id
+     LEFT JOIN staff_users s ON s.id = a.actor_staff_user_id
+     WHERE c.department_id = $1
+     ORDER BY a.created_at DESC
+     LIMIT 200`,
+    [departmentId],
+  );
+
+  res.json({ success: true, data: result.rows });
 });
 
 router.get('/reports/export.csv', requireRoles('admin', 'supervisor'), async (req, res) => {
-  const result=await pool.query(`SELECT c.reference_no,c.title,cc.name_th AS category,c.status,c.priority,c.contact_name,c.contact_phone,c.location_text,d.name_th AS department,su.display_name AS assigned_staff,c.created_at,c.due_at,c.completed_at FROM complaints c JOIN complaint_categories cc ON cc.id=c.category_id LEFT JOIN departments d ON d.id=c.department_id LEFT JOIN staff_users su ON su.id=c.assigned_staff_user_id ORDER BY c.created_at DESC`);
+  const departmentId = getAdminDepartmentId(req);
+  const values = req.admin.role === 'admin' ? [] : [departmentId];
+  const where = req.admin.role === 'admin' ? '' : 'WHERE c.department_id = $1';
+
+  if (req.admin.role !== 'admin' && !departmentId) {
+    throw new ApiError(403, 'บัญชีนี้ยังไม่ได้กำหนดหน่วยงาน');
+  }
+
+  const result=await pool.query(`SELECT c.reference_no,c.title,cc.name_th AS category,c.status,c.priority,c.contact_name,c.contact_phone,c.location_text,d.name_th AS department,su.display_name AS assigned_staff,c.created_at,c.due_at,c.completed_at FROM complaints c JOIN complaint_categories cc ON cc.id=c.category_id LEFT JOIN departments d ON d.id=c.department_id LEFT JOIN staff_users su ON su.id=c.assigned_staff_user_id ${where} ORDER BY c.created_at DESC`, values);
   const headers=['reference_no','title','category','status','priority','contact_name','contact_phone','location_text','department','assigned_staff','created_at','due_at','completed_at'];
   const esc=v=>'"'+String(v??'').replaceAll('"','""')+'"';
   const csv='\ufeff'+[headers.join(','),...result.rows.map(r=>headers.map(h=>esc(r[h])).join(','))].join('\n');
