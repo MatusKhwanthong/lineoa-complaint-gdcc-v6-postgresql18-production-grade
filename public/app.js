@@ -225,23 +225,55 @@ function ensureMap() {
     throw new Error('ไม่สามารถโหลดระบบแผนที่ OpenStreetMap ได้');
   }
 
-  state.map = L.map('mapView', {
+  const mapElement = $('#mapView');
+  if (!mapElement) {
+    throw new Error('ไม่พบพื้นที่แสดงแผนที่');
+  }
+
+  state.map = L.map(mapElement, {
     zoomControl: true,
     attributionControl: true,
+    tap: true,
+    touchZoom: true,
+    dragging: true,
+    doubleClickZoom: true,
+    scrollWheelZoom: true,
   });
 
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(state.map);
 
-  state.map.on('click', (event) => {
-    setCoordinates(event.latlng.lat, event.latlng.lng);
-  });
+  // แสดงสุราษฎร์ธานีทันที แม้ยังไม่ได้อนุญาตตำแหน่ง
+  state.map.setView([9.1382, 99.3217], 13);
 
+  const pinFromEvent = (event) => {
+    if (!event?.latlng) return;
+    setCoordinates(event.latlng.lat, event.latlng.lng);
+  };
+
+  state.map.on('click', pinFromEvent);
+
+  // ปุ่มสำรองสำหรับมือถือ/LINE WebView ที่ event click อาจไม่ทำงานบางรุ่น
+  mapElement.addEventListener(
+    'pointerup',
+    (event) => {
+      if (event.pointerType !== 'touch') return;
+      if (event.target?.closest?.('.leaflet-control, .leaflet-marker-icon')) return;
+
+      const rect = mapElement.getBoundingClientRect();
+      const point = L.point(event.clientX - rect.left, event.clientY - rect.top);
+      const latLng = state.map.containerPointToLatLng(point);
+      setCoordinates(latLng.lat, latLng.lng);
+    },
+    { passive: true },
+  );
+
+  window.setTimeout(() => state.map.invalidateSize(true), 100);
   return state.map;
 }
-
 function renderMap(latitude, longitude) {
   const panel = $('#mapPanel');
   const link = $('#openMap');
@@ -249,7 +281,6 @@ function renderMap(latitude, longitude) {
   const latLng = [latitude, longitude];
 
   link.href = openStreetMapUrl(latitude, longitude);
-  link.classList.remove('hidden');
   panel.classList.remove('hidden');
 
   if (!state.mapMarker) {
@@ -522,18 +553,26 @@ function showManualLocationPicker() {
   try {
     const panel = $('#mapPanel');
     const map = ensureMap();
+
     panel.classList.remove('hidden');
 
-    // แสดงพื้นที่สุราษฎร์ธานีเป็นจุดเริ่มต้น แต่ยังไม่บันทึกพิกัด
     if (state.latitude === null || state.longitude === null) {
       map.setView([9.1382, 99.3217], 13);
     }
 
-    window.setTimeout(() => map.invalidateSize(), 0);
+    window.setTimeout(() => {
+      map.invalidateSize(true);
+      map.getContainer().scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 100);
+
     $('#locationStatus').textContent =
-      'กรุณาแตะตำแหน่งบนแผนที่ หรือลากหมุดหลังเลือกตำแหน่ง';
+      'แตะตำแหน่งบนแผนที่เพื่อปักหมุด จากนั้นลากหมุดเพื่อปรับตำแหน่ง';
   } catch (mapError) {
     console.error('Unable to show manual map picker:', mapError);
+    showAlert(mapError.message || 'ไม่สามารถเปิดแผนที่ได้');
   }
 }
 
@@ -688,14 +727,11 @@ function setupForm() {
     state.latitude = null;
     state.longitude = null;
     clearImagePreviews();
-    $('#locationStatus').textContent =
-      'แตะบนแผนที่เพื่อปักหมุด หรือลากหมุดเพื่อปรับตำแหน่ง';
-    $('#openMap').classList.add('hidden');
+    $('#locationStatus').textContent = 'ยังไม่ได้บันทึกพิกัด';
+    $('#mapPanel').classList.add('hidden');
     if (state.mapMarker && state.map) {
       state.map.removeLayer(state.mapMarker);
       state.mapMarker = null;
-      state.map.setView([9.1382, 99.3217], 13);
-      window.setTimeout(() => state.map.invalidateSize(), 0);
     }
     $('#successCard').classList.add('hidden');
     form.classList.remove('hidden');
@@ -709,11 +745,11 @@ async function main() {
   setupLocation();
   setupForm();
 
-  // เตรียมแผนที่ไว้ล่วงหน้า เพื่อให้ผู้ใช้เลือกปักหมุดเองได้ทันที
   try {
     ensureMap();
   } catch (error) {
     console.error('Map initialization failed:', error);
+    showAlert(error.message || 'ไม่สามารถเปิดแผนที่ได้');
   }
 
   let lineReady = false;
