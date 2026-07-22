@@ -39,7 +39,7 @@ router.post('/login', async (req, res) => {
   }
 
   const result = await pool.query(
-    `SELECT id, username, password_hash, display_name, role, is_active
+    `SELECT id, username, password_hash, display_name, role, department_id, is_active
        FROM staff_users
       WHERE lower(username) = lower($1)
       LIMIT 1`,
@@ -66,6 +66,7 @@ router.post('/login', async (req, res) => {
       username: user.username,
       displayName: user.display_name,
       role: user.role,
+      departmentId: user.department_id,
     },
     config.jwtSecret,
     {
@@ -84,6 +85,7 @@ router.post('/login', async (req, res) => {
         username: user.username,
         displayName: user.display_name,
         role: user.role,
+        departmentId: user.department_id,
       },
     },
   });
@@ -180,6 +182,7 @@ router.get('/complaints', async (req, res) => {
         c.created_at,
         c.updated_at,
         c.assigned_staff_user_id,
+        c.department_id,
         cc.name_th AS category_name,
         d.name_th AS department_name,
         su.display_name AS assigned_staff_name,
@@ -211,10 +214,17 @@ router.get('/complaints', async (req, res) => {
     values,
   );
 
-  // บอก frontend ว่าแต่ละเรื่องแก้สถานะได้ไหม (officer แก้ได้เฉพาะของตัวเอง)
+  // Admin/Supervisor แก้สถานะได้ตามสิทธิ์เดิม
+  // Officer แก้สถานะได้เฉพาะเรื่องในหน่วยงานของตนเอง
   const rows = result.rows.map((row) => ({
     ...row,
-    canEditStatus: isElevatedStaff(req.admin) || row.assigned_staff_user_id === req.admin.id,
+    canEditStatus:
+      isElevatedStaff(req.admin) ||
+      (
+        req.admin.role === 'officer' &&
+        Boolean(req.admin.departmentId) &&
+        row.department_id === req.admin.departmentId
+      ),
   }));
 
   res.json({
@@ -283,7 +293,13 @@ router.get('/complaints/:id', async (req, res) => {
   );
 
   const complaint = result.rows[0];
-  const canEditStatus = isElevatedStaff(req.admin) || complaint.assigned_staff_user_id === req.admin.id;
+  const canEditStatus =
+    isElevatedStaff(req.admin) ||
+    (
+      req.admin.role === 'officer' &&
+      Boolean(req.admin.departmentId) &&
+      complaint.department_id === req.admin.departmentId
+    );
 
   res.json({
     success: true,
@@ -318,11 +334,20 @@ router.patch('/complaints/:id/status', async (req, res) => {
     const current = currentResult.rows[0];
     const nextStatus = parsed.data.status;
 
-    // Officer แก้สถานะได้เฉพาะเรื่องที่ตัวเองถูกมอบหมาย
-    // supervisor แก้ไม่ได้ทุกเรื่อง
-    // admin แก้ได้ทุกเรื่อง
-    if (!isElevatedStaff(req.admin) && current.assigned_staff_user_id !== req.admin.id) {
-      throw new ApiError(403, 'คุณสามารถแก้ไขได้เฉพาะเรื่องที่ได้รับมอบหมายเท่านั้น');
+    // Admin/Supervisor แก้สถานะได้ตามสิทธิ์ระดับสูง
+    // Officer แก้สถานะและกดจบงานได้เฉพาะเรื่องในหน่วยงานของตนเอง
+    if (!isElevatedStaff(req.admin)) {
+      const isOfficerInSameDepartment =
+        req.admin.role === 'officer' &&
+        Boolean(req.admin.departmentId) &&
+        current.department_id === req.admin.departmentId;
+
+      if (!isOfficerInSameDepartment) {
+        throw new ApiError(
+          403,
+          'Officer สามารถอัปเดตสถานะได้เฉพาะเรื่องของหน่วยงานตนเอง',
+        );
+      }
     }
 
     if (nextStatus !== current.status) {
@@ -338,6 +363,11 @@ router.patch('/complaints/:id/status', async (req, res) => {
     const updateResult = await client.query(
       `UPDATE complaints
           SET status = $1,
+              completed_at = CASE
+                WHEN $1 = 'completed'::complaint_status
+                  THEN COALESCE(completed_at, current_timestamp)
+                ELSE completed_at
+              END,
               updated_at = current_timestamp
         WHERE id = $2
         RETURNING *`,
@@ -390,52 +420,140 @@ router.patch('/complaints/:id/status', async (req, res) => {
 
 
 router.get('/dashboard', async (req, res) => {
-  const [summary, recent, categories, departments, statusBreakdown, monthlyTrend, urgentCases, mapCases] = await Promise.all([
-    pool.query(`
+  // Admin เห็นภาพรวมทุกหน่วยงาน
+  // Officer และ Supervisor เห็นเฉพาะข้อมูลของหน่วยงานตนเอง
+  const scopeByDepartment = req.admin.role !== 'admin';
+  const departmentId = req.admin.departmentId ?? null;
+
+  if (scopeByDepartment && !departmentId) {
+    throw new ApiError(403, 'บัญชีนี้ยังไม่ได้กำหนดหน่วยงาน');
+  }
+
+  const values = scopeByDepartment ? [departmentId] : [];
+  const complaintScope = scopeByDepartment ? 'WHERE c.department_id = $1' : '';
+  const complaintScopeAnd = scopeByDepartment ? 'AND c.department_id = $1' : '';
+  const categoryJoinScope = scopeByDepartment ? 'AND c.department_id = $1' : '';
+  const departmentJoinScope = scopeByDepartment ? 'AND c.department_id = $1' : '';
+
+  const [
+    summary,
+    recent,
+    categories,
+    departments,
+    statusBreakdown,
+    monthlyTrend,
+    urgentCases,
+    mapCases,
+  ] = await Promise.all([
+    pool.query(
+      `
       SELECT
         count(*)::integer AS total,
-        count(*) FILTER (WHERE status IN ('new','received'))::integer AS pending,
-        count(*) FILTER (WHERE status IN ('assigned','in_progress','waiting_for_info'))::integer AS in_progress,
-        count(*) FILTER (WHERE status = 'completed')::integer AS completed,
-        count(*) FILTER (WHERE due_at IS NOT NULL AND due_at < current_timestamp AND status NOT IN ('completed','rejected','cancelled'))::integer AS overdue,
-        count(*) FILTER (WHERE created_at >= date_trunc('month', current_timestamp))::integer AS this_month,
-        count(*) FILTER (WHERE priority IN ('high','urgent') AND status NOT IN ('completed','rejected','cancelled'))::integer AS high_priority,
-        COALESCE(round(avg(EXTRACT(EPOCH FROM (COALESCE(completed_at, current_timestamp) - created_at)) / 86400)::numeric, 1), 0) AS avg_days
-      FROM complaints
-    `),
-    pool.query(`
-      SELECT c.id, c.reference_no, c.title, c.status, c.priority, c.created_at,
-             c.due_at, cc.name_th AS category_name, d.name_th AS department_name
+        count(*) FILTER (WHERE c.status IN ('new','received'))::integer AS pending,
+        count(*) FILTER (WHERE c.status IN ('assigned','in_progress','waiting_for_info'))::integer AS in_progress,
+        count(*) FILTER (WHERE c.status = 'completed')::integer AS completed,
+        count(*) FILTER (
+          WHERE c.due_at IS NOT NULL
+            AND c.due_at < current_timestamp
+            AND c.status NOT IN ('completed','rejected','cancelled')
+        )::integer AS overdue,
+        count(*) FILTER (
+          WHERE c.created_at >= date_trunc('month', current_timestamp)
+        )::integer AS this_month,
+        count(*) FILTER (
+          WHERE c.priority IN ('high','urgent')
+            AND c.status NOT IN ('completed','rejected','cancelled')
+        )::integer AS high_priority,
+        COALESCE(
+          round(
+            avg(
+              EXTRACT(
+                EPOCH FROM (
+                  COALESCE(c.completed_at, current_timestamp) - c.created_at
+                )
+              ) / 86400
+            )::numeric,
+            1
+          ),
+          0
+        ) AS avg_days
+      FROM complaints c
+      ${complaintScope}
+      `,
+      values,
+    ),
+
+    pool.query(
+      `
+      SELECT
+        c.id,
+        c.reference_no,
+        c.title,
+        c.status,
+        c.priority,
+        c.created_at,
+        c.due_at,
+        cc.name_th AS category_name,
+        d.name_th AS department_name
       FROM complaints c
       JOIN complaint_categories cc ON cc.id = c.category_id
       LEFT JOIN departments d ON d.id = c.department_id
+      ${complaintScope}
       ORDER BY c.created_at DESC
       LIMIT 8
-    `),
-    pool.query(`
-      SELECT cc.name_th AS label, count(c.id)::integer AS value
+      `,
+      values,
+    ),
+
+    pool.query(
+      `
+      SELECT
+        cc.name_th AS label,
+        count(c.id)::integer AS value
       FROM complaint_categories cc
-      LEFT JOIN complaints c ON c.category_id = cc.id
+      LEFT JOIN complaints c
+        ON c.category_id = cc.id
+        ${categoryJoinScope}
       WHERE cc.is_active = true
       GROUP BY cc.id, cc.name_th, cc.sort_order
       ORDER BY value DESC, cc.sort_order
       LIMIT 8
-    `),
-    pool.query(`
-      SELECT d.name_th AS label, count(c.id)::integer AS value
+      `,
+      values,
+    ),
+
+    pool.query(
+      `
+      SELECT
+        d.name_th AS label,
+        count(c.id)::integer AS value
       FROM departments d
-      LEFT JOIN complaints c ON c.department_id = d.id
+      LEFT JOIN complaints c
+        ON c.department_id = d.id
+        ${departmentJoinScope}
       WHERE d.is_active = true
+        ${scopeByDepartment ? 'AND d.id = $1' : ''}
       GROUP BY d.id, d.name_th
       ORDER BY value DESC, d.name_th
-    `),
-    pool.query(`
-      SELECT status::text AS label, count(*)::integer AS value
-      FROM complaints
-      GROUP BY status
+      `,
+      values,
+    ),
+
+    pool.query(
+      `
+      SELECT
+        c.status::text AS label,
+        count(*)::integer AS value
+      FROM complaints c
+      ${complaintScope}
+      GROUP BY c.status
       ORDER BY value DESC
-    `),
-    pool.query(`
+      `,
+      values,
+    ),
+
+    pool.query(
+      `
       WITH months AS (
         SELECT generate_series(
           date_trunc('month', current_timestamp) - interval '5 months',
@@ -443,34 +561,74 @@ router.get('/dashboard', async (req, res) => {
           interval '1 month'
         ) AS month_start
       )
-      SELECT to_char(m.month_start, 'YYYY-MM') AS month,
-             count(c.id)::integer AS received,
-             count(c.id) FILTER (WHERE c.status = 'completed')::integer AS completed
+      SELECT
+        to_char(m.month_start, 'YYYY-MM') AS month,
+        count(c.id)::integer AS received,
+        count(c.id) FILTER (WHERE c.status = 'completed')::integer AS completed
       FROM months m
-      LEFT JOIN complaints c ON date_trunc('month', c.created_at) = m.month_start
+      LEFT JOIN complaints c
+        ON date_trunc('month', c.created_at) = m.month_start
+        ${categoryJoinScope}
       GROUP BY m.month_start
       ORDER BY m.month_start
-    `),
-    pool.query(`
-      SELECT c.id, c.reference_no, c.title, c.status, c.priority, c.due_at,
-             d.name_th AS department_name
+      `,
+      values,
+    ),
+
+    pool.query(
+      `
+      SELECT
+        c.id,
+        c.reference_no,
+        c.title,
+        c.status,
+        c.priority,
+        c.due_at,
+        d.name_th AS department_name
       FROM complaints c
       LEFT JOIN departments d ON d.id = c.department_id
       WHERE c.status NOT IN ('completed','rejected','cancelled')
-        AND (c.priority IN ('high','urgent') OR (c.due_at IS NOT NULL AND c.due_at < current_timestamp + interval '2 days'))
-      ORDER BY CASE c.priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 ELSE 3 END,
-               c.due_at NULLS LAST
+        ${complaintScopeAnd}
+        AND (
+          c.priority IN ('high','urgent')
+          OR (
+            c.due_at IS NOT NULL
+            AND c.due_at < current_timestamp + interval '2 days'
+          )
+        )
+      ORDER BY
+        CASE c.priority
+          WHEN 'urgent' THEN 1
+          WHEN 'high' THEN 2
+          ELSE 3
+        END,
+        c.due_at NULLS LAST
       LIMIT 6
-    `),
-    pool.query(`
-      SELECT c.id, c.reference_no, c.title, c.status, c.latitude, c.longitude,
-             c.location_text, cc.name_th AS category_name
+      `,
+      values,
+    ),
+
+    pool.query(
+      `
+      SELECT
+        c.id,
+        c.reference_no,
+        c.title,
+        c.status,
+        c.latitude,
+        c.longitude,
+        c.location_text,
+        cc.name_th AS category_name
       FROM complaints c
       JOIN complaint_categories cc ON cc.id = c.category_id
-      WHERE c.latitude IS NOT NULL AND c.longitude IS NOT NULL
+      WHERE c.latitude IS NOT NULL
+        AND c.longitude IS NOT NULL
+        ${complaintScopeAnd}
       ORDER BY c.created_at DESC
       LIMIT 100
-    `),
+      `,
+      values,
+    ),
   ]);
 
   res.json({
