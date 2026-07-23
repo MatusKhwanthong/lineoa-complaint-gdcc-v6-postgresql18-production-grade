@@ -211,6 +211,7 @@ router.get('/complaints', async (req, res) => {
         c.latitude,
         c.longitude,
         c.status,
+        c.priority,
         c.contact_name,
         c.contact_phone,
         c.contact_email,

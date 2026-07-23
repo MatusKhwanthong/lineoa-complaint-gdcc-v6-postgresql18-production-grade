@@ -370,3 +370,35 @@ input,select,textarea{
     width:100%;
   }
 }
+
+.v3-priority{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:68px;
+  padding:.3rem .58rem;
+  border-radius:999px;
+  font-size:.72rem;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.v3-priority.priority-low{
+  color:#52606d;
+  background:#edf1f3;
+}
+
+.v3-priority.priority-normal{
+  color:#17684f;
+  background:#def3e9;
+}
+
+.v3-priority.priority-high{
+  color:#9a5a00;
+  background:#fff0ce;
+}
+
+.v3-priority.priority-urgent{
+  color:#ae2727;
+  background:#ffe0e0;
+}
