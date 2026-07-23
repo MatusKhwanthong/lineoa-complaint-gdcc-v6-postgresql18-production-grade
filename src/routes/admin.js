@@ -34,7 +34,7 @@ async function writeAudit(req, action, entityType, entityId = null, detail = {})
 }
 
 const allowedTransitions = {
-  new: ['received', 'rejected', 'cancelled'],
+  new: ['received', 'in_progress', 'rejected', 'cancelled'],
   received: ['assigned', 'in_progress', 'waiting_for_info', 'rejected', 'cancelled'],
   assigned: ['in_progress', 'waiting_for_info', 'completed', 'cancelled'],
   in_progress: ['waiting_for_info', 'completed', 'cancelled'],
@@ -778,8 +778,8 @@ router.patch(
               priority = $2,
               due_at = $3,
               status = CASE
-                WHEN status IN ('new','received')
-                  THEN 'assigned'::complaint_status
+                WHEN status = 'new'
+                  THEN 'received'::complaint_status
                 ELSE status
               END,
               updated_at = current_timestamp
@@ -821,13 +821,25 @@ router.patch(
         priority: parsed.data.priority,
         dueAt: parsed.data.dueAt ?? null,
         note: parsed.data.note ?? null,
+        status: result.rows[0].status,
       },
     );
+
+    const statusChanged = current.status !== result.rows[0].status;
+    if (statusChanged) {
+      await notifyStatusChanged(
+        result.rows[0],
+        parsed.data.note || 'เจ้าหน้าที่รับเรื่องร้องเรียนแล้ว',
+      );
+    }
 
     res.json({
       success: true,
       message: 'บันทึกการดำเนินงานเรียบร้อย',
-      data: result.rows[0],
+      data: {
+        ...result.rows[0],
+        statusChanged,
+      },
     });
   },
 );

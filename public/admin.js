@@ -1,14 +1,14 @@
-const statusLabels={new:'รับเรื่องใหม่',received:'รับเรื่องแล้ว',assigned:'มอบหมายแล้ว',in_progress:'กำลังดำเนินการ',waiting_for_info:'รอข้อมูลเพิ่มเติม',completed:'เสร็จสิ้น',rejected:'ไม่รับดำเนินการ',cancelled:'ยกเลิก'};
+﻿const statusLabels={new:'รับเรื่องใหม่',received:'รับเรื่องแล้ว',assigned:'มอบหมายแล้ว',in_progress:'กำลังดำเนินการ',waiting_for_info:'รอข้อมูลเพิ่มเติม',completed:'เสร็จสิ้น',rejected:'ไม่รับดำเนินการ',cancelled:'ยกเลิก'};
 const statusColors={new:'#e7a61b',received:'#3f79db',assigned:'#568ce8',in_progress:'#8d59d7',waiting_for_info:'#b170d7',completed:'#19a676',rejected:'#db5555',cancelled:'#8a9692'};
 const priorityLabels={low:'ต่ำ',normal:'ปกติ',high:'สูง',urgent:'เร่งด่วน'};
-const $=s=>document.querySelector(s);let token=sessionStorage.getItem('adminToken');let currentPage=1;let departments=[];let staff=[];let dashboardCache=null;let currentUser=null;let governanceMode='categories';let governanceEditing=null;
+const $=s=>document.querySelector(s);let token=sessionStorage.getItem('adminToken');let currentPage=1;let departments=[];let staff=[];let dashboardCache=null;let currentUser=null;let governanceMode='categories';let governanceEditing=null;let smartGeoMap=null;let smartGeoMarkers=null;let smartGeoMarkerById=new Map();
 function show(id,msg,type='error'){const e=$(id);e.textContent=msg;e.className=`alert ${type}`;e.classList.remove('hidden')}
 function clear(id){const e=$(id);e.className='alert hidden';e.textContent=''}
 async function api(path,opt={}){const h=new Headers(opt.headers||{});if(!(opt.body instanceof FormData))h.set('content-type','application/json');if(token)h.set('authorization',`Bearer ${token}`);const r=await fetch(path,{...opt,headers:h});const j=await r.json().catch(()=>({}));if(r.status===401&&path!='/api/admin/login')logout();if(!r.ok)throw new Error(j.message||`เกิดข้อผิดพลาด ${r.status}`);return j}
 function fmt(v){if(!v)return'-';return new Intl.DateTimeFormat('th-TH',{dateStyle:'medium',timeStyle:'short'}).format(new Date(v))}
 function badge(s){return `<span class="v3-badge status-${s}">${statusLabels[s]||s}</span>`}
 function priorityBadge(priority='normal'){const value=priorityLabels[priority]?priority:'normal';return `<span class="v3-priority priority-${value}">${priorityLabels[value]}</span>`}
-function googleMapsUrl(lat,lng){return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`}
+function openStreetMapUrl(lat,lng){const latitude=Number(lat).toFixed(6);const longitude=Number(lng).toFixed(6);return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(latitude)}&mlon=${encodeURIComponent(longitude)}#map=18/${encodeURIComponent(latitude)}/${encodeURIComponent(longitude)}`}
 function loginView(){$('#loginPanel').classList.remove('hidden');$('#appShell').classList.add('hidden')}
 function appView(user){currentUser=user;$('#loginPanel').classList.add('hidden');$('#appShell').classList.remove('hidden');$('#staffName').textContent=user.displayName||user.username;$('#staffRole').textContent=user.role;$('#todayLabel').textContent=new Intl.DateTimeFormat('th-TH',{dateStyle:'full'}).format(new Date())}
 function logout(){token=null;sessionStorage.removeItem('adminToken');loginView()}
@@ -52,7 +52,7 @@ const depOptions=['<option value="">ยังไม่มอบหมาย</opt
 const assignSection=canManageAssignment?`<section class="drawer-section"><h3>การดำเนินงาน</h3><div class="drawer-form"><label>หน่วยงาน<select id="assignDepartment" ${canChangeDepartment?'':'disabled'}>${depOptions}</select>${canChangeDepartment?'':'<small class="muted">เฉพาะ Admin เท่านั้นที่เปลี่ยนหน่วยงานได้</small>'}</label><div class="two"><label>ความสำคัญ<select id="assignPriority"><option value="low">ต่ำ</option><option value="normal">ปกติ</option><option value="high">สูง</option><option value="urgent">เร่งด่วน</option></select></label><label>กำหนดเสร็จ<input id="assignDue" type="datetime-local"></label></div><label>หมายเหตุ<input id="assignNote" placeholder="รายละเอียดการดำเนินงาน"></label><button id="assignButton" class="v3-primary">บันทึกการดำเนินงาน</button></div></section>`:'';
 const canEditStatus=Boolean(c.canEditStatus);
 const statusSection=`<section class="drawer-section"><h3>อัปเดตสถานะ</h3>${canEditStatus?`<div class="drawer-form"><select id="newStatus">${Object.entries(statusLabels).map(([v,l])=>`<option value="${v}" ${v===c.status?'selected':''}>${l}</option>`).join('')}</select><input id="statusNote" placeholder="หมายเหตุถึงประชาชน"><button id="statusButton" class="v3-primary">บันทึกสถานะและแจ้ง LINE</button></div>`:'<p class="muted">คุณสามารถแก้ไขสถานะได้เฉพาะเรื่องที่ได้รับมอบหมายเท่านั้น</p>'}</section>`;
-$('#drawerContent').innerHTML=`<div class="drawer-hero">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.category_name)} • ${priorityLabels[c.priority]||c.priority||'ปกติ'}</p></div><div class="drawer-grid"><div class="drawer-field"><span>ผู้ร้องเรียน</span><b>${escapeHtml(c.contact_name)}</b></div><div class="drawer-field"><span>โทรศัพท์</span><b>${escapeHtml(c.contact_phone)}</b></div><div class="drawer-field"><span>หน่วยงาน</span><b>${escapeHtml(c.department_name||'ยังไม่มอบหมาย')}</b></div></div><section class="drawer-section"><h3>รายละเอียดเรื่องร้องเรียน</h3><p>${escapeHtml(c.description)}</p><p><b>สถานที่:</b> ${escapeHtml(c.location_text)}</p>${c.latitude!=null?`<a class="map-link-button" target="_blank" rel="noopener" href="${googleMapsUrl(c.latitude,c.longitude)}">⌖ เปิดใน Google Maps</a>`:''}</section>${images?`<section class="drawer-section"><h3>รูปภาพประกอบ</h3><div class="drawer-images">${images}</div></section>`:''}${assignSection}${statusSection}<section class="drawer-section"><h3>ประวัติการดำเนินงาน</h3><div class="timeline">${(c.history||[]).map(h=>`<div class="timeline-item"><b>${statusLabels[h.new_status]||h.new_status}</b><p>${escapeHtml(h.note||'-')}</p><small>${fmt(h.created_at)} ${h.staff_name?`• ${escapeHtml(h.staff_name)}`:''}</small></div>`).join('')}</div></section>`;
+$('#drawerContent').innerHTML=`<div class="drawer-hero">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.category_name)} • ${priorityLabels[c.priority]||c.priority||'ปกติ'}</p></div><div class="drawer-grid"><div class="drawer-field"><span>ผู้ร้องเรียน</span><b>${escapeHtml(c.contact_name)}</b></div><div class="drawer-field"><span>โทรศัพท์</span><b>${escapeHtml(c.contact_phone)}</b></div><div class="drawer-field"><span>หน่วยงาน</span><b>${escapeHtml(c.department_name||'ยังไม่มอบหมาย')}</b></div></div><section class="drawer-section"><h3>รายละเอียดเรื่องร้องเรียน</h3><p>${escapeHtml(c.description)}</p><p><b>สถานที่:</b> ${escapeHtml(c.location_text)}</p>${c.latitude!=null&&c.longitude!=null?`<a class="map-link-button" target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">⌖ เปิดใน OpenStreetMap</a>`:''}</section>${images?`<section class="drawer-section"><h3>รูปภาพประกอบ</h3><div class="drawer-images">${images}</div></section>`:''}${assignSection}${statusSection}<section class="drawer-section"><h3>ประวัติการดำเนินงาน</h3><div class="timeline">${(c.history||[]).map(h=>`<div class="timeline-item"><b>${statusLabels[h.new_status]||h.new_status}</b><p>${escapeHtml(h.note||'-')}</p><small>${fmt(h.created_at)} ${h.staff_name?`• ${escapeHtml(h.staff_name)}`:''}</small></div>`).join('')}</div></section>`;
 if(canManageAssignment){$('#assignPriority').value=c.priority||'normal';if(c.due_at)$('#assignDue').value=new Date(c.due_at).toISOString().slice(0,16);$('#assignButton').onclick=()=>assignCase(c.id)}
 if(canEditStatus){$('#statusButton').onclick=()=>updateStatus(c.id)}
 $('#detailDrawer').classList.remove('hidden')}
@@ -68,12 +68,18 @@ async function assignCase(id){
       payload.departmentId=$('#assignDepartment').value||null;
     }
 
-    await api(`/api/admin/complaints/${id}/assignment`,{
+    const result=await api(`/api/admin/complaints/${id}/assignment`,{
       method:'PATCH',
       body:JSON.stringify(payload),
     });
 
-    show('#pageAlert','บันทึกการดำเนินงานเรียบร้อย','success');
+    show(
+      '#pageAlert',
+      result.data?.statusChanged
+        ? 'บันทึกการดำเนินงานและอัปเดตสถานะเป็น รับเรื่องแล้ว'
+        : 'บันทึกการดำเนินงานเรียบร้อย',
+      'success',
+    );
     $('#detailDrawer').classList.add('hidden');
     await boot();
   }catch(e){
@@ -81,7 +87,78 @@ async function assignCase(id){
   }
 }
 async function updateStatus(id){try{await api(`/api/admin/complaints/${id}/status`,{method:'PATCH',body:JSON.stringify({status:$('#newStatus').value,note:$('#statusNote').value})});show('#pageAlert','อัปเดตสถานะและส่งแจ้งเตือนเรียบร้อย','success');$('#detailDrawer').classList.add('hidden');await boot()}catch(e){show('#pageAlert',e.message)}}
-function renderMapCases(){const rows=dashboardCache.mapCases||[];$('#mapComplaintList').innerHTML=rows.map(c=>`<article class="location-case">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${c.reference_no}</p><p>${escapeHtml(c.location_text)}</p><a target="_blank" rel="noopener" href="${googleMapsUrl(c.latitude,c.longitude)}">เปิด Google Maps →</a></article>`).join('')||'<p class="muted">ยังไม่มีรายการที่มีพิกัด</p>';$('#mapPins').innerHTML=rows.map((c,i)=>{const left=8+((Number(c.longitude)*1000+i*17)%84+84)%84;const top=10+((Number(c.latitude)*1000+i*23)%78+78)%78;return `<button class="smart-pin ${c.status}" style="left:${left}%;top:${top}%" title="${escapeHtml(c.reference_no)} ${escapeHtml(c.title)}" data-url="${googleMapsUrl(c.latitude,c.longitude)}"></button>`}).join('');document.querySelectorAll('.smart-pin').forEach(p=>p.onclick=()=>window.open(p.dataset.url,'_blank','noopener'))}
+function ensureSmartGeoMap(){
+  if(smartGeoMap)return smartGeoMap;
+  const mapElement=$('#adminComplaintMap');
+  if(!mapElement)throw new Error('ไม่พบพื้นที่แสดงแผนที่');
+  if(typeof window.L==='undefined')throw new Error('ไม่สามารถโหลดระบบแผนที่ได้');
+  smartGeoMap=window.L.map(mapElement,{zoomControl:true,attributionControl:true});
+  window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19,
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(smartGeoMap);
+  smartGeoMarkers=window.L.layerGroup().addTo(smartGeoMap);
+  smartGeoMap.setView([9.1382,99.3217],11);
+  return smartGeoMap;
+}
+function createMapPopup(c){
+  const popup=document.createElement('div');
+  popup.className='smart-map-popup';
+  const title=document.createElement('strong');
+  title.textContent=c.title||'-';
+  const reference=document.createElement('span');
+  reference.textContent=c.reference_no||'-';
+  const location=document.createElement('p');
+  location.textContent=c.location_text||'-';
+  const link=document.createElement('a');
+  link.href=openStreetMapUrl(c.latitude,c.longitude);
+  link.target='_blank';
+  link.rel='noopener';
+  link.textContent='เปิดใน OpenStreetMap →';
+  popup.append(title,reference,location,link);
+  return popup;
+}
+function renderMapCases(){
+  const rows=(dashboardCache?.mapCases||[]).filter(c=>Number.isFinite(Number(c.latitude))&&Number.isFinite(Number(c.longitude)));
+  $('#mapComplaintList').innerHTML=rows.map(c=>`<article class="location-case">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.reference_no)}</p><p>${escapeHtml(c.location_text||'-')}</p><div class="map-case-actions"><button type="button" class="focus-map-case" data-case-id="${escapeHtml(c.reference_no)}">ดูบนแผนที่</button><a target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">เปิด OpenStreetMap →</a></div></article>`).join('')||'<p class="muted">ยังไม่มีรายการที่มีพิกัด</p>';
+  const mapElement=$('#adminComplaintMap');
+  try{
+    const map=ensureSmartGeoMap();
+    smartGeoMarkers.clearLayers();
+    smartGeoMarkerById=new Map();
+    const bounds=[];
+    rows.forEach(c=>{
+      const point=[Number(c.latitude),Number(c.longitude)];
+      const marker=window.L.circleMarker(point,{
+        radius:9,
+        color:'#ffffff',
+        weight:3,
+        fillColor:statusColors[c.status]||'#d84c4c',
+        fillOpacity:1,
+      }).addTo(smartGeoMarkers);
+      marker.bindPopup(createMapPopup(c),{maxWidth:300});
+      smartGeoMarkerById.set(String(c.reference_no),marker);
+      bounds.push(point);
+    });
+    if(bounds.length===1)map.setView(bounds[0],16);
+    else if(bounds.length>1)map.fitBounds(bounds,{padding:[36,36],maxZoom:16});
+    else map.setView([9.1382,99.3217],11);
+    document.querySelectorAll('.focus-map-case').forEach(button=>{
+      button.onclick=()=>{
+        const marker=smartGeoMarkerById.get(button.dataset.caseId);
+        if(!marker)return;
+        map.setView(marker.getLatLng(),17,{animate:true});
+        marker.openPopup();
+      };
+    });
+    window.setTimeout(()=>map.invalidateSize(true),0);
+  }catch(error){
+    if(mapElement){
+      mapElement.classList.add('map-load-error');
+      mapElement.textContent=`ไม่สามารถแสดงแผนที่ได้: ${error.message}`;
+    }
+  }
+}
 function renderReports(){const s=dashboardCache.summary;const data=[['เรื่องทั้งหมด',s.total],['เดือนนี้',s.this_month],['กำลังดำเนินการ',s.in_progress],['เสร็จสิ้น',s.completed],['เฉลี่ยวันดำเนินการ',s.avg_days]];$('#reportSummary').innerHTML=data.map(([l,v])=>`<div><strong>${v||0}</strong><span>${l}</span></div>`).join('');renderBars('#reportCategory',dashboardCache.categoryBreakdown);renderBars('#reportDepartment',dashboardCache.departmentBreakdown);renderTrend('#reportTrend',dashboardCache.monthlyTrend)}
 
 function governanceTable(headers, rows){return `<div class="table-wrap"><table class="v3-table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`}

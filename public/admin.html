@@ -6,8 +6,17 @@
   <meta name="theme-color" content="#083f3a">
   <title>Smart City Complaint Command Center</title>
   <link rel="stylesheet" href="/styles.css">
-  <link rel="stylesheet" href="/admin-v3.css?v=20260723-priority-1">
-  <script type="module" src="/admin.js?v=20260723-priority-1"></script>
+  <link rel="stylesheet" href="/admin-v3.css?v=20260723-osm-map-1">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin="anonymous"
+  >
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    crossorigin="anonymous"
+  ></script>
+  <script type="module" src="/admin.js?v=20260723-osm-map-1"></script>
 </head>
 <body class="admin-v3-body">
   <section id="loginPanel" class="v3-login">
@@ -63,7 +72,7 @@
       </section>
 
       <section id="mapView" class="admin-view hidden">
-        <div class="map-command-grid"><article class="v3-card map-panel-card"><div class="v3-card-head"><div><p class="overline">SMART GEO MAP</p><h2>แผนที่รวมจุดร้องเรียน</h2><p>เลือกหมุดเพื่อเปิด Google Maps และตรวจสอบพื้นที่เกิดเหตุ</p></div></div><div class="smart-map-stage"><div class="map-grid-lines"></div><div id="mapPins" class="map-pins"></div><div class="map-center-label"><b>SMART CITY MAP</b><span>แสดงพิกัดจากฐานข้อมูลจริง</span></div></div></article><article class="v3-card map-list-card"><div class="v3-card-head"><div><p class="overline">LOCATIONS</p><h2>รายการที่มีพิกัด</h2></div></div><div id="mapComplaintList" class="location-list"></div></article></div>
+        <div class="map-command-grid"><article class="v3-card map-panel-card"><div class="v3-card-head"><div><p class="overline">SMART GEO MAP</p><h2>แผนที่รวมจุดร้องเรียน</h2><p>เลือกหมุดเพื่อตรวจสอบเรื่องร้องเรียนบน OpenStreetMap</p></div></div><div id="adminComplaintMap" class="smart-map-stage" role="region" aria-label="แผนที่ OpenStreetMap แสดงจุดร้องเรียน"></div></article><article class="v3-card map-list-card"><div class="v3-card-head"><div><p class="overline">LOCATIONS</p><h2>รายการที่มีพิกัด</h2></div></div><div id="mapComplaintList" class="location-list"></div></article></div>
       </section>
 
       <section id="reportsView" class="admin-view hidden">

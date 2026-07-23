@@ -402,3 +402,108 @@ input,select,textarea{
   color:#ae2727;
   background:#ffe0e0;
 }
+
+/* Smart Geo Map - OpenStreetMap */
+#adminComplaintMap.smart-map-stage{
+  position:relative;
+  z-index:0;
+  width:100%;
+  height:clamp(480px,62vh,680px);
+  min-height:480px;
+  overflow:hidden;
+  border:1px solid #d7e5e2;
+  border-radius:18px;
+  background:#e8f1ef;
+}
+
+#adminComplaintMap .leaflet-control-zoom a{
+  color:#075f55;
+}
+
+#adminComplaintMap .leaflet-control-attribution{
+  font-size:.68rem;
+}
+
+.smart-map-popup{
+  display:grid;
+  gap:.35rem;
+  min-width:210px;
+  color:#173c38;
+  font-family:inherit;
+}
+
+.smart-map-popup strong{
+  font-size:.94rem;
+}
+
+.smart-map-popup span{
+  color:#087166;
+  font-size:.76rem;
+  font-weight:900;
+}
+
+.smart-map-popup p{
+  margin:0;
+  color:#657673;
+  line-height:1.45;
+}
+
+.smart-map-popup a{
+  color:#087166;
+  font-weight:900;
+}
+
+.map-case-actions{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:.55rem;
+  margin-top:.7rem;
+}
+
+.location-case .map-case-actions a{
+  margin-top:0;
+}
+
+.focus-map-case{
+  min-height:36px;
+  border:1px solid #0b8d7d;
+  border-radius:10px;
+  padding:.45rem .7rem;
+  background:#e7f6f2;
+  color:#07685d;
+  font:inherit;
+  font-size:.78rem;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.focus-map-case:hover,
+.focus-map-case:focus-visible{
+  background:#0b8d7d;
+  color:#fff;
+}
+
+#adminComplaintMap.map-load-error{
+  display:grid;
+  place-items:center;
+  padding:2rem;
+  color:#a52e2e;
+  font-weight:800;
+  text-align:center;
+}
+
+@media(max-width:900px){
+  #adminComplaintMap.smart-map-stage{
+    height:500px;
+    min-height:420px;
+  }
+}
+
+@media(max-width:600px){
+  #adminComplaintMap.smart-map-stage{
+    height:430px;
+    min-height:360px;
+    border-radius:14px;
+  }
+}
