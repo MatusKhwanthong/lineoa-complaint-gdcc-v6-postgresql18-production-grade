@@ -146,8 +146,10 @@ function renderMapCases(){
         fillOpacity:1,
       }).addTo(smartGeoMarkers);
       marker.bindPopup(createMapPopup(c),{
-        maxWidth:300,
+        maxWidth:260,
+        minWidth:190,
         autoPan:true,
+        keepInView:true,
         autoPanPaddingTopLeft:[24,24],
         autoPanPaddingBottomRight:[24,24],
       });
