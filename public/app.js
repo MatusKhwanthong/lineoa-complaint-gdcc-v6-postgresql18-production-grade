@@ -665,26 +665,165 @@ function setupLocation() {
   $('#longitude').addEventListener('change', syncManualCoordinates);
 }
 
+const complaintRequiredFields = [
+  { selector: '#categoryId', message: 'กรุณาเลือกหมวดหมู่' },
+  { selector: '#title', message: 'กรุณากรอกหัวข้อ' },
+  { selector: '#description', message: 'กรุณากรอกรายละเอียดเรื่องร้องเรียน' },
+  {
+    selector: '#images',
+    message: 'กรุณาแนบรูปภาพอย่างน้อย 1 ภาพ',
+    validate: (element) => Boolean(element.files?.length),
+  },
+  { selector: '#contactName', message: 'กรุณากรอกชื่อผู้ติดต่อ' },
+  {
+    selector: '#contactPhone',
+    message: 'กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง',
+    validate: (element) => {
+      const phone = element.value.replace(/\D/g, '');
+      return phone.length >= 9 && phone.length <= 10;
+    },
+  },
+  {
+    selector: '#privacyConsent',
+    message: 'กรุณายอมรับประกาศความเป็นส่วนตัว',
+    validate: (element) => element.checked,
+  },
+];
+
+function getFieldErrorContainer(element) {
+  return (
+    element.closest('.file-picker') ||
+    element.closest('.consent') ||
+    element.closest('label')
+  );
+}
+
+function removeFieldError(element) {
+  if (!element) return;
+  element.classList.remove('field-invalid');
+  element.removeAttribute('aria-invalid');
+  element.removeAttribute('aria-describedby');
+
+  const container = getFieldErrorContainer(element);
+  container?.classList.remove('field-container-invalid');
+  document.getElementById(`${element.id}-error`)?.remove();
+}
+
+function showFieldError(element, message) {
+  if (!element) return;
+  removeFieldError(element);
+
+  element.classList.add('field-invalid');
+  element.setAttribute('aria-invalid', 'true');
+
+  const container = getFieldErrorContainer(element);
+  container?.classList.add('field-container-invalid');
+
+  const error = document.createElement('small');
+  error.id = `${element.id}-error`;
+  error.className = 'field-error';
+  error.textContent = message;
+  element.setAttribute('aria-describedby', error.id);
+
+  if (element.type === 'file' || element.type === 'checkbox') {
+    container?.insertAdjacentElement('afterend', error);
+  } else {
+    element.insertAdjacentElement('afterend', error);
+  }
+}
+
+function isRequiredFieldValid(field, element) {
+  return field.validate ? field.validate(element) : element.value.trim() !== '';
+}
+
+function validateComplaintForm() {
+  let firstInvalid = null;
+  let invalidCount = 0;
+
+  for (const field of complaintRequiredFields) {
+    const element = $(field.selector);
+    if (!element) continue;
+
+    removeFieldError(element);
+    if (isRequiredFieldValid(field, element)) continue;
+
+    invalidCount += 1;
+    showFieldError(element, field.message);
+    firstInvalid ||= element;
+  }
+
+  if (!firstInvalid) return true;
+
+  showAlert(`กรุณากรอกข้อมูลให้ครบถ้วน ยังขาด ${invalidCount} รายการ`);
+  const scrollTarget = getFieldErrorContainer(firstInvalid) || firstInvalid;
+  scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  window.setTimeout(() => firstInvalid.focus({ preventScroll: true }), 350);
+  return false;
+}
+
+function setupLiveFieldValidation() {
+  for (const field of complaintRequiredFields) {
+    const element = $(field.selector);
+    if (!element) continue;
+
+    const eventName =
+      element.type === 'file' ||
+      element.type === 'checkbox' ||
+      element.tagName === 'SELECT'
+        ? 'change'
+        : 'input';
+
+    element.addEventListener(eventName, () => {
+      if (isRequiredFieldValid(field, element)) removeFieldError(element);
+    });
+  }
+}
+
+function clearAllFieldErrors() {
+  for (const field of complaintRequiredFields) {
+    removeFieldError($(field.selector));
+  }
+  removeFieldError($('#latitude'));
+  removeFieldError($('#longitude'));
+}
+
 function setupForm() {
   const form = $('#complaintForm');
   const submitButton = $('#submitButton');
 
   $('#images').addEventListener('change', renderSelectedImages);
+  setupLiveFieldValidation();
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     clearAlert();
 
-    if (!setCoordinates($('#latitude').value, $('#longitude').value)) {
-      showAlert('กรุณาระบุพิกัด Latitude และ Longitude ให้ถูกต้อง');
-      return;
+    if (!validateComplaintForm()) return;
+
+    const latitude = $('#latitude').value.trim();
+    const longitude = $('#longitude').value.trim();
+    removeFieldError($('#latitude'));
+    removeFieldError($('#longitude'));
+
+    // สถานที่และพิกัดไม่บังคับ แต่ถ้ากรอกพิกัด ต้องกรอกให้ครบทั้งคู่
+    if (latitude || longitude) {
+      if (!latitude || !longitude || !setCoordinates(latitude, longitude)) {
+        const invalidCoordinate = !latitude ? $('#latitude') : $('#longitude');
+        showFieldError(
+          invalidCoordinate,
+          'กรุณากรอก Latitude และ Longitude ให้ครบและถูกต้อง',
+        );
+        showAlert('ข้อมูลพิกัดไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง');
+        invalidCoordinate.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        window.setTimeout(() => invalidCoordinate.focus({ preventScroll: true }), 350);
+        return;
+      }
+    } else {
+      state.latitude = null;
+      state.longitude = null;
     }
 
     const selectedFiles = [...$('#images').files];
-    if (!selectedFiles.length) {
-      showAlert('กรุณาแนบรูปภาพประกอบอย่างน้อย 1 ภาพ');
-      return;
-    }
 
     submitButton.disabled = true;
     submitButton.textContent = 'กำลังอัปโหลดและส่งข้อมูล…';
@@ -695,8 +834,8 @@ function setupForm() {
       payload.set('title', $('#title').value);
       payload.set('description', $('#description').value);
       payload.set('locationText', $('#locationText').value);
-      payload.set('latitude', String(state.latitude));
-      payload.set('longitude', String(state.longitude));
+      payload.set('latitude', state.latitude === null ? '' : String(state.latitude));
+      payload.set('longitude', state.longitude === null ? '' : String(state.longitude));
       payload.set('contactName', $('#contactName').value);
       payload.set('contactPhone', $('#contactPhone').value);
       payload.set('contactEmail', $('#contactEmail').value);
@@ -724,6 +863,8 @@ function setupForm() {
 
   $('#newComplaintButton').addEventListener('click', () => {
     form.reset();
+    clearAllFieldErrors();
+    clearAlert();
     state.latitude = null;
     state.longitude = null;
     clearImagePreviews();
