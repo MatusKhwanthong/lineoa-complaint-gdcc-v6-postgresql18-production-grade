@@ -1,7 +1,7 @@
 ﻿const statusLabels={new:'รับเรื่องใหม่',received:'รับเรื่องแล้ว',assigned:'มอบหมายแล้ว',in_progress:'กำลังดำเนินการ',waiting_for_info:'รอข้อมูลเพิ่มเติม',completed:'เสร็จสิ้น',rejected:'ไม่รับดำเนินการ',cancelled:'ยกเลิก'};
 const statusColors={new:'#e7a61b',received:'#3f79db',assigned:'#568ce8',in_progress:'#8d59d7',waiting_for_info:'#b170d7',completed:'#19a676',rejected:'#db5555',cancelled:'#8a9692'};
 const priorityLabels={low:'ต่ำ',normal:'ปกติ',high:'สูง',urgent:'เร่งด่วน'};
-const $=s=>document.querySelector(s);let token=sessionStorage.getItem('adminToken');let currentPage=1;let departments=[];let staff=[];let dashboardCache=null;let currentUser=null;let governanceMode='categories';let governanceEditing=null;let smartGeoMap=null;let smartGeoMarkers=null;let smartGeoMarkerById=new Map();
+const $=s=>document.querySelector(s);let token=sessionStorage.getItem('adminToken');let currentPage=1;let departments=[];let staff=[];let dashboardCache=null;let currentUser=null;let governanceMode='categories';let governanceEditing=null;let smartGeoMap=null;let smartGeoMarkers=null;let smartGeoMarkerById=new Map();let smartGeoResizeTimer=null;
 function show(id,msg,type='error'){const e=$(id);e.textContent=msg;e.className=`alert ${type}`;e.classList.remove('hidden')}
 function clear(id){const e=$(id);e.className='alert hidden';e.textContent=''}
 async function api(path,opt={}){const h=new Headers(opt.headers||{});if(!(opt.body instanceof FormData))h.set('content-type','application/json');if(token)h.set('authorization',`Bearer ${token}`);const r=await fetch(path,{...opt,headers:h});const j=await r.json().catch(()=>({}));if(r.status===401&&path!='/api/admin/login')logout();if(!r.ok)throw new Error(j.message||`เกิดข้อผิดพลาด ${r.status}`);return j}
@@ -99,6 +99,15 @@ function ensureSmartGeoMap(){
   }).addTo(smartGeoMap);
   smartGeoMarkers=window.L.layerGroup().addTo(smartGeoMap);
   smartGeoMap.setView([9.1382,99.3217],11);
+  const refreshMapSize=()=>{
+    window.clearTimeout(smartGeoResizeTimer);
+    smartGeoResizeTimer=window.setTimeout(()=>{
+      smartGeoMap?.invalidateSize({pan:false,debounceMoveend:true});
+    },180);
+  };
+  window.addEventListener('resize',refreshMapSize,{passive:true});
+  window.addEventListener('orientationchange',refreshMapSize,{passive:true});
+  window.visualViewport?.addEventListener('resize',refreshMapSize,{passive:true});
   return smartGeoMap;
 }
 function createMapPopup(c){
@@ -130,13 +139,18 @@ function renderMapCases(){
     rows.forEach(c=>{
       const point=[Number(c.latitude),Number(c.longitude)];
       const marker=window.L.circleMarker(point,{
-        radius:9,
+        radius:window.matchMedia('(pointer:coarse)').matches?13:9,
         color:'#ffffff',
         weight:3,
         fillColor:statusColors[c.status]||'#d84c4c',
         fillOpacity:1,
       }).addTo(smartGeoMarkers);
-      marker.bindPopup(createMapPopup(c),{maxWidth:300});
+      marker.bindPopup(createMapPopup(c),{
+        maxWidth:300,
+        autoPan:true,
+        autoPanPaddingTopLeft:[24,24],
+        autoPanPaddingBottomRight:[24,24],
+      });
       smartGeoMarkerById.set(String(c.reference_no),marker);
       bounds.push(point);
     });
@@ -147,7 +161,7 @@ function renderMapCases(){
       button.onclick=()=>{
         const marker=smartGeoMarkerById.get(button.dataset.caseId);
         if(!marker)return;
-        map.setView(marker.getLatLng(),17,{animate:true});
+        map.setView(marker.getLatLng(),17,{animate:false});
         marker.openPopup();
       };
     });
