@@ -15,11 +15,21 @@ export const complaintCreateSchema = z.object({
   description: z
     .string()
     .trim()
-    .min(10, 'กรุณาระบุรายละเอียดอย่างน้อย 10 ตัวอักษร')
-    .max(5000),
-  locationText: optionalText(500),
-  latitude: z.number().min(-90, 'ละติจูดไม่ถูกต้อง').max(90, 'ละติจูดไม่ถูกต้อง'),
-  longitude: z.number().min(-180, 'ลองจิจูดไม่ถูกต้อง').max(180, 'ลองจิจูดไม่ถูกต้อง'),
+    .max(5000)
+    .optional()
+    .or(z.literal(''))
+    .transform((value) => value || '-'),
+  locationText: optionalText(500).transform((value) => value || '-'),
+  latitude: z
+    .number()
+    .min(-90, 'ละติจูดไม่ถูกต้อง')
+    .max(90, 'ละติจูดไม่ถูกต้อง')
+    .nullable(),
+  longitude: z
+    .number()
+    .min(-180, 'ลองจิจูดไม่ถูกต้อง')
+    .max(180, 'ลองจิจูดไม่ถูกต้อง')
+    .nullable(),
   contactName: z.string().trim().min(2, 'กรุณาระบุชื่อผู้ติดต่อ').max(200),
   contactPhone: z
     .string()
@@ -34,6 +44,18 @@ export const complaintCreateSchema = z.object({
   privacyConsent: z.literal(true, {
     errorMap: () => ({ message: 'กรุณายอมรับประกาศความเป็นส่วนตัว' }),
   }),
+}).superRefine((data, context) => {
+  const hasLatitude = data.latitude !== null;
+  const hasLongitude = data.longitude !== null;
+
+  if (hasLatitude === hasLongitude) return;
+
+  const missingField = hasLatitude ? 'longitude' : 'latitude';
+  context.addIssue({
+    code: z.ZodIssueCode.custom,
+    path: [missingField],
+    message: 'กรุณาระบุ Latitude และ Longitude ให้ครบทั้งคู่',
+  });
 });
 
 export const adminLoginSchema = z.object({

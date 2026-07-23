@@ -407,6 +407,72 @@ async function loadProtectedGallery(container, attachments, urlBuilder, authToke
   }
 }
 
+function createComplaintTimeline(item) {
+  const timeline = document.createElement('section');
+  timeline.className = 'complaint-timeline';
+
+  const title = document.createElement('h4');
+  title.className = 'timeline-title';
+  title.textContent = 'ไทม์ไลน์การดำเนินงาน';
+
+  const timelineList = document.createElement('div');
+  timelineList.className = 'timeline-list';
+
+  const history =
+    Array.isArray(item.history) && item.history.length
+      ? item.history
+      : [
+          {
+            new_status: item.status,
+            note: null,
+            created_at: item.updated_at || item.created_at,
+          },
+        ];
+
+  history.forEach((event, index) => {
+    const entry = document.createElement('div');
+    entry.className = 'timeline-item';
+    if (index === history.length - 1) entry.classList.add('timeline-current');
+
+    const marker = document.createElement('span');
+    marker.className = 'timeline-marker';
+    marker.setAttribute('aria-hidden', 'true');
+
+    const content = document.createElement('div');
+    content.className = 'timeline-content';
+
+    const heading = document.createElement('div');
+    heading.className = 'timeline-heading';
+
+    const status = document.createElement('strong');
+    status.textContent =
+      statusLabels[event.new_status] || event.new_status || 'อัปเดตสถานะ';
+
+    const date = document.createElement('time');
+    if (event.created_at) {
+      date.dateTime = event.created_at;
+      date.textContent = formatThaiDate(event.created_at);
+    } else {
+      date.textContent = '-';
+    }
+
+    heading.append(status, date);
+    content.append(heading);
+
+    if (event.note?.trim()) {
+      const note = document.createElement('p');
+      note.textContent = event.note.trim();
+      content.append(note);
+    }
+
+    entry.append(marker, content);
+    timelineList.append(entry);
+  });
+
+  timeline.append(title, timelineList);
+  return timeline;
+}
+
 async function loadComplaints() {
   const list = $('#complaintList');
   list.innerHTML = '<p class="muted">กำลังโหลดข้อมูล…</p>';
@@ -443,8 +509,12 @@ async function loadComplaints() {
       const category = document.createElement('p');
       category.textContent = `หมวดหมู่: ${item.category_name}`;
 
+      const description = document.createElement('p');
+      description.className = 'complaint-description';
+      description.textContent = `รายละเอียด: ${item.description?.trim() || '-'}`;
+
       const location = document.createElement('p');
-      location.textContent = `สถานที่: ${item.location_text}`;
+      location.textContent = `สถานที่: ${item.location_text?.trim() || '-'}`;
 
       const actions = document.createElement('div');
       actions.className = 'card-actions';
@@ -487,7 +557,19 @@ async function loadComplaints() {
       date.className = 'muted';
       date.textContent = `แจ้งเมื่อ ${formatThaiDate(item.created_at)}`;
 
-      article.append(heading, title, category, location, actions, galleryContainer, date);
+      const timeline = createComplaintTimeline(item);
+
+      article.append(
+        heading,
+        title,
+        category,
+        description,
+        location,
+        actions,
+        galleryContainer,
+        date,
+        timeline,
+      );
       list.append(article);
     }
   } catch (error) {

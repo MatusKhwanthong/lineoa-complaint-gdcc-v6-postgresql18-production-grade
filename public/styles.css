@@ -346,3 +346,111 @@ input,select,textarea{
   }
 }
 
+/* Complaint status timeline */
+.complaint-description{
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+
+.complaint-timeline{
+  margin-top:1rem;
+  padding-top:1rem;
+  border-top:1px solid var(--line);
+}
+
+.timeline-title{
+  margin:0 0 .85rem;
+  color:var(--deep);
+  font-size:.95rem;
+}
+
+.timeline-list{
+  display:grid;
+}
+
+.timeline-item{
+  position:relative;
+  display:grid;
+  grid-template-columns:24px minmax(0,1fr);
+  gap:.65rem;
+  padding-bottom:.75rem;
+}
+
+.timeline-item:not(:last-child)::before{
+  content:"";
+  position:absolute;
+  left:9px;
+  top:20px;
+  bottom:-2px;
+  width:2px;
+  border-radius:999px;
+  background:#cfe4de;
+}
+
+.timeline-marker{
+  position:relative;
+  z-index:1;
+  display:block;
+  width:20px;
+  height:20px;
+  margin-top:.6rem;
+  border:5px solid #fff;
+  border-radius:50%;
+  background:#8bbcaf;
+  box-shadow:0 0 0 2px #cfe4de;
+}
+
+.timeline-current .timeline-marker{
+  background:var(--mint);
+  box-shadow:0 0 0 3px rgba(34,167,141,.2);
+}
+
+.timeline-content{
+  min-width:0;
+  padding:.7rem .8rem;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#f9fcfb;
+}
+
+.timeline-current .timeline-content{
+  border-color:#b9ded4;
+  background:#eef8f5;
+}
+
+.timeline-heading{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:.75rem;
+}
+
+.timeline-heading strong{
+  color:var(--deep);
+  font-size:.85rem;
+}
+
+.timeline-heading time{
+  flex:0 0 auto;
+  color:var(--muted);
+  font-size:.72rem;
+}
+
+.timeline-content p{
+  margin:.35rem 0 0;
+  color:var(--muted);
+  font-size:.8rem;
+  line-height:1.5;
+  overflow-wrap:anywhere;
+}
+
+@media(max-width:600px){
+  .timeline-heading{
+    display:block;
+  }
+
+  .timeline-heading time{
+    display:block;
+    margin-top:.2rem;
+  }
+}

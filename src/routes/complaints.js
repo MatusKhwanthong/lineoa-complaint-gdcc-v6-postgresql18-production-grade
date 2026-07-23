@@ -19,11 +19,11 @@ router.use(requireLineUser);
 function multipartPayload(body) {
   const latitude =
     body.latitude === undefined || body.latitude === ''
-      ? Number.NaN
+      ? null
       : Number(body.latitude);
   const longitude =
     body.longitude === undefined || body.longitude === ''
-      ? Number.NaN
+      ? null
       : Number(body.longitude);
 
   return {
@@ -226,6 +226,7 @@ router.get('/', async (req, res) => {
         c.id,
         c.reference_no,
         c.title,
+        COALESCE(NULLIF(BTRIM(c.description), ''), '-') AS description,
         c.status,
         c.location_text,
         c.latitude,
@@ -233,6 +234,22 @@ router.get('/', async (req, res) => {
         c.created_at,
         c.updated_at,
         cc.name_th AS category_name,
+        (
+          SELECT COALESCE(
+            json_agg(
+              json_build_object(
+                'old_status', h.old_status,
+                'new_status', h.new_status,
+                'note', h.note,
+                'created_at', h.created_at
+              )
+              ORDER BY h.created_at
+            ),
+            '[]'::json
+          )
+          FROM complaint_status_history h
+          WHERE h.complaint_id = c.id
+        ) AS history,
         (
           SELECT COALESCE(
             json_agg(
@@ -295,7 +312,7 @@ router.get('/:referenceNo', async (req, res) => {
         c.id,
         c.reference_no,
         c.title,
-        c.description,
+        COALESCE(NULLIF(BTRIM(c.description), ''), '-') AS description,
         c.location_text,
         c.latitude,
         c.longitude,
