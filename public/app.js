@@ -668,7 +668,6 @@ function setupLocation() {
 const complaintRequiredFields = [
   { selector: '#categoryId', message: 'กรุณาเลือกหมวดหมู่' },
   { selector: '#title', message: 'กรุณากรอกหัวข้อ' },
-  { selector: '#description', message: 'กรุณากรอกรายละเอียดเรื่องร้องเรียน' },
   {
     selector: '#images',
     message: 'กรุณาแนบรูปภาพอย่างน้อย 1 ภาพ',
