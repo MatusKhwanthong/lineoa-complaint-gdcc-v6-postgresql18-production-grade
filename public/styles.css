@@ -278,3 +278,71 @@ input,select,textarea{
     font-size:.9rem;
   }
 }
+
+/* ===== Form validation and required-label alignment ===== */
+.field-label{
+  display:inline-flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:flex-start;
+  gap:.25rem;
+  width:max-content;
+  max-width:100%;
+  margin:0;
+  font-weight:800;
+  line-height:1.45;
+  white-space:nowrap;
+}
+
+.field-label .required,
+.section-body h3 .required{
+  display:inline;
+  margin:0;
+  padding:0;
+  color:var(--red);
+  font-weight:900;
+  line-height:inherit;
+}
+
+.field-invalid{
+  border-color:#d9363e!important;
+  background:#fff7f7!important;
+  box-shadow:0 0 0 3px rgba(217,54,62,.14)!important;
+}
+
+.field-invalid:focus{
+  outline:none;
+  border-color:#b91c1c!important;
+  box-shadow:0 0 0 4px rgba(217,54,62,.2)!important;
+}
+
+.field-container-invalid.file-picker,
+.field-container-invalid.consent{
+  border-color:#d9363e!important;
+  background:#fff7f7!important;
+}
+
+.field-error{
+  display:block;
+  width:100%;
+  margin-top:.35rem;
+  color:#b91c1c;
+  font-size:.82rem;
+  font-weight:700;
+  line-height:1.45;
+}
+
+.field-error::before{
+  content:"⚠ ";
+}
+
+@media(max-width:600px){
+  .field-label{
+    white-space:normal;
+  }
+
+  .field-error{
+    font-size:.78rem;
+  }
+}
+

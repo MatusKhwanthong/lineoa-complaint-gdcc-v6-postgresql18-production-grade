@@ -19,36 +19,7 @@
       crossorigin="anonymous"
     ></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script type="module" src="/app.js?v=20260723-form-validation-1"></script>
-    <style>
-      .field-invalid {
-        border-color: #d9363e !important;
-        background: #fff7f7 !important;
-        box-shadow: 0 0 0 3px rgba(217, 54, 62, 0.14) !important;
-      }
-      .field-invalid:focus {
-        outline: none;
-        border-color: #b91c1c !important;
-        box-shadow: 0 0 0 4px rgba(217, 54, 62, 0.2) !important;
-      }
-      .field-container-invalid.file-picker,
-      .field-container-invalid.consent {
-        border-color: #d9363e !important;
-        background: #fff7f7 !important;
-      }
-      .field-error {
-        display: block;
-        margin-top: 0.35rem;
-        color: #b91c1c;
-        font-size: 0.82rem;
-        font-weight: 700;
-        line-height: 1.45;
-      }
-      .field-error::before { content: "⚠ "; }
-      @media (max-width: 600px) {
-        .field-error { font-size: 0.78rem; }
-      }
-    </style>
+    <script type="module" src="/app.js?v=20260723-form-validation-2"></script>
   </head>
   <body class="citizen-v3-body">
     <header class="citizen-header">
@@ -160,22 +131,31 @@
             <div class="section-body">
               <h3>รายละเอียดเรื่องร้องเรียน</h3>
               <div class="form-grid">
-                <label
-                  >หมวดหมู่ <span class="required">*</span
-                  ><select id="categoryId" required>
+                <label>
+                  <span class="field-label">
+                    หมวดหมู่ <span class="required" aria-hidden="true">*</span>
+                  </span>
+                  <select id="categoryId" required>
                     <option value="">กำลังโหลดหมวดหมู่…</option>
-                  </select></label
-                ><label
-                  >หัวข้อ <span class="required">*</span
-                  ><input
+                  </select>
+                </label>
+                <label>
+                  <span class="field-label">
+                    หัวข้อ <span class="required" aria-hidden="true">*</span>
+                  </span>
+                  <input
                     id="title"
                     maxlength="200"
                     required
                     placeholder="เช่น ไฟส่องสว่างดับ"
-                /></label>
+                  />
+                </label>
               </div>
-              <label
-                >รายละเอียด <textarea
+              <label>
+                <span class="field-label">
+                  รายละเอียด <span class="required" aria-hidden="true">*</span>
+                </span>
+                <textarea
                   id="description"
                   maxlength="5000"
                   required
@@ -188,7 +168,7 @@
           <section class="form-section">
             <div class="section-number">02</div>
             <div class="section-body">
-              <h3>รูปภาพประกอบ</h3>
+              <h3>รูปภาพประกอบ <span class="required" aria-hidden="true">*</span></h3>
               <p id="imageHelp" class="form-help">
                 แนบภาพที่เห็นจุดเกิดเหตุชัดเจน
               </p>
@@ -272,25 +252,32 @@
             <div class="section-body">
               <h3>ข้อมูลผู้ติดต่อ</h3>
               <div class="form-grid">
-                <label
-                  >ชื่อผู้ติดต่อ<input
-                    id="contactName"
-                    maxlength="200"
-                    required /></label
-                ><label
-                  >เบอร์โทรศัพท์<input
+                <label>
+                  <span class="field-label">
+                    ชื่อผู้ติดต่อ <span class="required" aria-hidden="true">*</span>
+                  </span>
+                  <input id="contactName" maxlength="200" required />
+                </label>
+                <label>
+                  <span class="field-label">
+                    เบอร์โทรศัพท์ <span class="required" aria-hidden="true">*</span>
+                  </span>
+                  <input
                     id="contactPhone"
                     maxlength="20"
                     inputmode="tel"
                     required
-                /></label>
+                  />
+                </label>
               </div>
-              <label
-                >อีเมล (ไม่บังคับ)<input
+              <label>
+                <span class="field-label">อีเมล (ไม่บังคับ)</span>
+                <input
                   id="contactEmail"
                   maxlength="254"
-                  inputmode="email" /></label
-              ><label class="consent"
+                  inputmode="email"
+                />
+              </label><label class="consent"
                 ><input id="privacyConsent" type="checkbox" required /><span
                   >ข้าพเจ้าอ่านและยอมรับ
                   <a
