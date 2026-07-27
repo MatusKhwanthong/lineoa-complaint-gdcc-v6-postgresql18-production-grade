@@ -1434,6 +1434,33 @@ input,select,textarea{
 .page-btn.active,
 .governance-tab.active{
   border-color:#FF00FF;
-  color:#330033;
+  color:#fff;
   background:#FF00FF;
+}
+
+/* Change button surfaces only; keep button labels readable. */
+.v3-primary,
+.page-btn.active,
+.governance-tab.active,
+#mapView:not(.hidden) .mobile-map-page-button.is-active{
+  color:#fff;
+}
+
+.view-case,
+.governance-edit,
+.location-case .map-case-actions button,
+#mapView:not(.hidden) .mobile-location-actions button{
+  border-color:#FF00FF;
+  color:#fff;
+  background:#FF00FF;
+}
+
+/* Complaint references use dark purple for easier reading. */
+.case-ref,
+#drawerReference,
+.location-case>p:first-of-type,
+.mobile-map-case-reference,
+.smart-map-popup>span{
+  color:#660066!important;
+  font-weight:900;
 }

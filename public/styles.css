@@ -693,3 +693,16 @@ input,select,textarea{
 .container>.panel h2{
   color:#990099;
 }
+
+/* Change button surfaces only; keep button labels readable. */
+.hero-primary,
+.smart-submit,
+.tab.active{
+  color:#fff;
+}
+
+.card-heading>strong,
+#successReference,
+.success-card strong{
+  color:#660066;
+}
