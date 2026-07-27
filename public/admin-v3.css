@@ -859,3 +859,51 @@ input,select,textarea{
     font-size:.58rem;
   }
 }
+
+/* Show coordinate cases directly below the map on mobile. */
+@media(max-width:900px){
+  .map-view-active .map-command-grid{
+    display:flex;
+    width:100%;
+    min-width:0;
+    flex-direction:column;
+    gap:.75rem;
+  }
+
+  .map-view-active .map-panel-card{
+    order:1;
+  }
+
+  .map-view-active .map-list-card{
+    display:block;
+    order:2;
+    width:100%;
+    margin-top:0;
+    overflow:visible;
+  }
+
+  .map-view-active .location-list{
+    display:grid;
+    height:auto;
+    max-height:none;
+    gap:.65rem;
+    overflow:visible;
+  }
+
+  .map-view-active .location-case{
+    width:100%;
+  }
+}
+
+@media(max-width:430px){
+  .map-view-active #adminComplaintMap.smart-map-stage{
+    height:320px;
+    height:min(40svh,320px);
+    min-height:260px;
+    max-height:320px;
+  }
+
+  .map-view-active .map-list-card .v3-card-head h2{
+    margin-bottom:.65rem;
+  }
+}
