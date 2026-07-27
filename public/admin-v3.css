@@ -627,3 +627,105 @@ input,select,textarea{
     max-width:calc(100vw - 80px);
   }
 }
+
+/* Fit the complete Smart Map view inside the desktop viewport. */
+@media(min-width:901px){
+  .admin-v3-body.map-view-active{
+    height:100vh;
+    height:100dvh;
+    overflow:hidden;
+  }
+
+  .map-view-active .v3-shell,
+  .map-view-active .v3-sidebar{
+    height:100vh;
+    height:100dvh;
+    min-height:0;
+  }
+
+  .map-view-active .v3-main{
+    display:flex;
+    height:100vh;
+    height:100dvh;
+    min-height:0;
+    flex-direction:column;
+    padding-bottom:1rem;
+    overflow:hidden;
+  }
+
+  .map-view-active .v3-header,
+  .map-view-active #pageAlert:not(.hidden){
+    flex:0 0 auto;
+  }
+
+  .map-view-active #mapView{
+    flex:1 1 auto;
+    min-height:0;
+    overflow:hidden;
+  }
+
+  .map-view-active .map-command-grid{
+    height:100%;
+    min-height:0;
+  }
+
+  .map-view-active .map-panel-card,
+  .map-view-active .map-list-card{
+    height:100%;
+    min-height:0;
+    overflow:hidden;
+  }
+
+  .map-view-active .map-panel-card .v3-card-head,
+  .map-view-active .map-list-card .v3-card-head{
+    flex:0 0 auto;
+  }
+
+  .map-view-active #adminComplaintMap.smart-map-stage,
+  .map-view-active .location-list{
+    flex:1 1 auto;
+    height:auto;
+    min-height:0;
+    max-height:none;
+  }
+
+  .map-view-active .location-list{
+    overflow-y:auto;
+  }
+}
+
+/* Keep the whole map visible before the list on Android and iOS. */
+@media(max-width:900px){
+  .map-view-active #adminComplaintMap.smart-map-stage{
+    height:calc(100vh - 300px);
+    height:calc(100svh - 300px);
+    min-height:320px;
+    max-height:520px;
+  }
+}
+
+@media(max-width:600px){
+  .map-view-active #adminComplaintMap.smart-map-stage{
+    height:calc(100vh - 285px);
+    height:calc(100svh - 285px);
+    min-height:300px;
+    max-height:480px;
+  }
+}
+
+@media(max-width:900px) and (max-height:600px){
+  .map-view-active .v3-header{
+    display:none;
+  }
+
+  .map-view-active .map-panel-card .v3-card-head p:last-child{
+    display:none;
+  }
+
+  .map-view-active #adminComplaintMap.smart-map-stage{
+    height:calc(100vh - 170px);
+    height:calc(100svh - 170px);
+    min-height:180px;
+    max-height:360px;
+  }
+}
