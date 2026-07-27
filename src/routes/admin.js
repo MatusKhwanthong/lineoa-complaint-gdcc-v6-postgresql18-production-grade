@@ -141,6 +141,7 @@ router.get('/complaints', async (req, res) => {
   const querySchema = z.object({
     status: z.string().optional(),
     search: z.string().max(200).optional(),
+    month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
     mine: z.coerce.boolean().optional(),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -151,7 +152,7 @@ router.get('/complaints', async (req, res) => {
     throw new ApiError(400, 'ตัวกรองไม่ถูกต้อง');
   }
 
-  const { status, search, mine, page, limit } = parsed.data;
+  const { status, search, month, mine, page, limit } = parsed.data;
   const conditions = [];
   const values = [];
 
@@ -166,9 +167,29 @@ router.get('/complaints', async (req, res) => {
     conditions.push(`c.department_id = $${values.length}`);
   }
 
+  const monthScopeWhere = conditions.length
+    ? `WHERE ${conditions.join(' AND ')}`
+    : '';
+  const monthResult = await pool.query(
+    `SELECT to_char(date_trunc('month', c.created_at), 'YYYY-MM') AS value
+       FROM complaints c
+       ${monthScopeWhere}
+      GROUP BY date_trunc('month', c.created_at)
+      ORDER BY date_trunc('month', c.created_at) DESC`,
+    values,
+  );
+
   if (status) {
     values.push(status);
     conditions.push(`c.status::text = $${values.length}`);
+  }
+
+  if (month) {
+    values.push(`${month}-01`);
+    conditions.push(
+      `c.created_at >= $${values.length}::date
+       AND c.created_at < ($${values.length}::date + interval '1 month')`,
+    );
   }
 
   // ?mine=true = ดูเฉพาะเรื่องที่ตัวเองถูกมอบหมาย (ใช้ได้ทุก role,
@@ -266,6 +287,9 @@ router.get('/complaints', async (req, res) => {
       limit,
       total: countResult.rows[0].total,
       totalPages: Math.ceil(countResult.rows[0].total / limit),
+    },
+    filters: {
+      months: monthResult.rows.map((row) => row.value),
     },
   });
 });

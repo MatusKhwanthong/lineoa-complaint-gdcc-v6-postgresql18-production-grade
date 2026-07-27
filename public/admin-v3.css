@@ -869,6 +869,31 @@ input,select,textarea{
   font-weight:800;
 }
 
+#complaintMonthFilter{
+  min-width:170px;
+}
+
+.complaint-month-row td{
+  padding:.7rem .85rem!important;
+  border-top:2px solid #b8d9d1!important;
+  border-bottom:1px solid #cfe4de!important;
+  background:#edf8f5!important;
+  color:var(--deep);
+  font-weight:900;
+}
+
+.complaint-month-row td span,
+.complaint-month-row td small{
+  display:inline-block;
+}
+
+.complaint-month-row td small{
+  margin-left:.6rem;
+  color:var(--muted);
+  font-size:.72rem;
+  font-weight:700;
+}
+
 .map-month-filter select{
   width:100%;
   min-height:40px;
@@ -1057,6 +1082,33 @@ input,select,textarea{
     font-size:.78rem;
     line-height:1.45;
     overflow-wrap:anywhere;
+  }
+
+  #mapView:not(.hidden) .mobile-map-pagination{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:.55rem;
+    margin-top:.8rem;
+  }
+
+  #mapView:not(.hidden) .mobile-map-page-button{
+    width:44px;
+    min-height:44px;
+    padding:.5rem;
+    border:1px solid #0b8d7d;
+    border-radius:10px;
+    background:#fff;
+    color:var(--green);
+    font-size:.9rem;
+    font-weight:900;
+  }
+
+  #mapView:not(.hidden) .mobile-map-page-button.is-active{
+    border-color:var(--green);
+    background:var(--green);
+    color:#fff;
   }
 
   #mapView:not(.hidden) .mobile-map-locations>.mobile-location-item{
