@@ -257,15 +257,20 @@ router.get('/', async (req, res) => {
                 'id', a.id,
                 'originalName', a.original_name,
                 'mimeType', a.mime_type,
-                'sizeBytes', a.size_bytes,
-                'width', a.width,
-                'height', a.height
-              )
+                 'sizeBytes', a.size_bytes,
+                 'width', a.width,
+                 'height', a.height,
+                 'source', a.attachment_source,
+                 'createdAt', a.created_at,
+                 'staffNote', a.staff_note,
+                 'staffName', creator.display_name
+               )
               ORDER BY a.sort_order, a.created_at
             ),
             '[]'::json
           )
           FROM complaint_attachments a
+          LEFT JOIN staff_users creator ON creator.id = a.created_by_staff_user_id
           WHERE a.complaint_id = c.id
         ) AS attachments
        FROM complaints c
@@ -327,15 +332,20 @@ router.get('/:referenceNo', async (req, res) => {
                 'id', a.id,
                 'originalName', a.original_name,
                 'mimeType', a.mime_type,
-                'sizeBytes', a.size_bytes,
-                'width', a.width,
-                'height', a.height
-              )
+                 'sizeBytes', a.size_bytes,
+                 'width', a.width,
+                 'height', a.height,
+                 'source', a.attachment_source,
+                 'createdAt', a.created_at,
+                 'staffNote', a.staff_note,
+                 'staffName', creator.display_name
+               )
               ORDER BY a.sort_order, a.created_at
             ),
             '[]'::json
           )
           FROM complaint_attachments a
+          LEFT JOIN staff_users creator ON creator.id = a.created_by_staff_user_id
           WHERE a.complaint_id = c.id
         ) AS attachments
        FROM complaints c

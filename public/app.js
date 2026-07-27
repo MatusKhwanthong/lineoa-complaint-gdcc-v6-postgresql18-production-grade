@@ -532,29 +532,60 @@ async function loadComplaints() {
         actions.append(mapLink);
       }
 
-      const galleryContainer = document.createElement('div');
-      galleryContainer.className = 'gallery-container hidden';
+      const galleries = document.createElement('div');
+      galleries.className = 'complaint-galleries';
+      const citizenAttachments = (item.attachments || []).filter(
+        (attachment) => attachment.source !== 'staff',
+      );
+      const staffAttachments = (item.attachments || []).filter(
+        (attachment) => attachment.source === 'staff',
+      );
 
-      if (item.attachments?.length) {
+      const addAttachmentGallery = (attachments, buttonLabel, isStaff = false) => {
+        if (!attachments.length) return;
+        const galleryContainer = document.createElement('div');
+        galleryContainer.className = 'gallery-container hidden';
         const imageButton = document.createElement('button');
         imageButton.type = 'button';
         imageButton.className = 'secondary';
-        imageButton.textContent = `ดูรูปภาพ (${item.attachments.length})`;
+        imageButton.textContent = `${buttonLabel} (${attachments.length})`;
         imageButton.addEventListener('click', async () => {
           galleryContainer.classList.toggle('hidden');
           if (!galleryContainer.dataset.loaded) {
             galleryContainer.dataset.loaded = 'true';
             await loadProtectedGallery(
               galleryContainer,
-              item.attachments,
+              attachments,
               (attachment) =>
                 `/api/complaints/${encodeURIComponent(item.reference_no)}/attachments/${attachment.id}`,
               state.idToken,
             );
+            if (isStaff) {
+              const staffNames = [
+                ...new Set(attachments.map((attachment) => attachment.staffName).filter(Boolean)),
+              ];
+              const notes = [
+                ...new Set(attachments.map((attachment) => attachment.staffNote).filter(Boolean)),
+              ];
+              const sourceNote = document.createElement('p');
+              sourceNote.className = 'attachment-source-note';
+              sourceNote.textContent = [
+                'รูปผลการดำเนินงานจากเจ้าหน้าที่',
+                staffNames.length ? `โดย ${staffNames.join(', ')}` : '',
+                notes.length ? `หมายเหตุ: ${notes.join(' • ')}` : '',
+              ]
+                .filter(Boolean)
+                .join(' — ');
+              galleryContainer.prepend(sourceNote);
+            }
           }
         });
         actions.append(imageButton);
-      }
+        galleries.append(galleryContainer);
+      };
+
+      addAttachmentGallery(citizenAttachments, 'รูปจากผู้แจ้ง');
+      addAttachmentGallery(staffAttachments, 'รูปการดำเนินงาน', true);
 
       const date = document.createElement('p');
       date.className = 'muted';
@@ -569,7 +600,7 @@ async function loadComplaints() {
         description,
         location,
         actions,
-        galleryContainer,
+        galleries,
         timeline,
       );
 

@@ -6,7 +6,7 @@ const inputSchema = z.object({
   username: z.string().trim().min(3).max(100),
   password: z.string().min(12).max(200),
   displayName: z.string().trim().min(2).max(200),
-  role: z.enum(['officer', 'supervisor', 'admin']),
+  role: z.enum(['officer', 'supervisor', 'executive', 'admin']),
 });
 
 const [username, password, displayName, role = 'admin'] = process.argv.slice(2);
@@ -14,7 +14,7 @@ const parsed = inputSchema.safeParse({ username, password, displayName, role });
 
 if (!parsed.success) {
   console.error(
-    'วิธีใช้: npm run admin:create -- <username> <passwordอย่างน้อย12ตัว> "<ชื่อแสดงผล>" <officer|supervisor|admin>',
+    'วิธีใช้: npm run admin:create -- <username> <passwordอย่างน้อย12ตัว> "<ชื่อแสดงผล>" <officer|supervisor|executive|admin>',
   );
   process.exit(1);
 }

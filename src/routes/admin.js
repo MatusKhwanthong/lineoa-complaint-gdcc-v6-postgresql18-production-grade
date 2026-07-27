@@ -8,7 +8,12 @@ import { ApiError } from '../errors.js';
 import { requireAdmin, requireRoles } from '../middleware/admin-auth.js';
 import { adminLoginSchema, statusUpdateSchema } from '../validators.js';
 import { notifyStatusChanged } from '../services/notifications.js';
-import { sendStoredImage } from '../services/uploads.js';
+import {
+  cleanupStoredImages,
+  processAndStoreImages,
+  sendStoredImage,
+  uploadComplaintImages,
+} from '../services/uploads.js';
 
 const router = Router();
 
@@ -22,6 +27,22 @@ function isSameDepartmentStaff(req, departmentId) {
     Boolean(getAdminDepartmentId(req)) &&
     departmentId === getAdminDepartmentId(req)
   );
+}
+
+function isGlobalReadOnlyRole(role) {
+  return ['executive', 'exclusive'].includes(role);
+}
+
+function canReadAllDepartments(role) {
+  return role === 'admin' || isGlobalReadOnlyRole(role);
+}
+
+function getRequestedDepartmentId(req) {
+  const parsed = z.string().uuid().optional().safeParse(req.query.departmentId);
+  if (!parsed.success) {
+    throw new ApiError(400, 'รหัสหน่วยงานไม่ถูกต้อง');
+  }
+  return parsed.data ?? null;
 }
 
 
@@ -128,7 +149,7 @@ router.get('/attachments/:id', async (req, res) => {
   if (result.rowCount === 0) throw new ApiError(404, 'ไม่พบรูปภาพ');
 
   if (
-    req.admin.role !== 'admin' &&
+    !canReadAllDepartments(req.admin.role) &&
     !isSameDepartmentStaff(req, result.rows[0].department_id)
   ) {
     throw new ApiError(403, 'ไม่มีสิทธิ์ดูรูปภาพของหน่วยงานอื่น');
@@ -142,6 +163,7 @@ router.get('/complaints', async (req, res) => {
     status: z.string().optional(),
     search: z.string().max(200).optional(),
     month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
+    departmentId: z.string().uuid().optional(),
     mine: z.coerce.boolean().optional(),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -152,11 +174,16 @@ router.get('/complaints', async (req, res) => {
     throw new ApiError(400, 'ตัวกรองไม่ถูกต้อง');
   }
 
-  const { status, search, month, mine, page, limit } = parsed.data;
+  const { status, search, month, departmentId: requestedDepartmentId, mine, page, limit } = parsed.data;
   const conditions = [];
   const values = [];
 
-  if (req.admin.role !== 'admin') {
+  if (canReadAllDepartments(req.admin.role)) {
+    if (requestedDepartmentId) {
+      values.push(requestedDepartmentId);
+      conditions.push(`c.department_id = $${values.length}`);
+    }
+  } else {
     const departmentId = getAdminDepartmentId(req);
 
     if (!departmentId) {
@@ -251,15 +278,20 @@ router.get('/complaints', async (req, res) => {
                 'id', a.id,
                 'originalName', a.original_name,
                 'mimeType', a.mime_type,
-                'sizeBytes', a.size_bytes,
-                'width', a.width,
-                'height', a.height
-              )
-              ORDER BY a.sort_order, a.created_at
-            ),
+                 'sizeBytes', a.size_bytes,
+                 'width', a.width,
+                 'height', a.height,
+                 'source', a.attachment_source,
+                 'createdAt', a.created_at,
+                 'staffNote', a.staff_note,
+                 'staffName', creator.display_name
+               )
+               ORDER BY a.sort_order, a.created_at
+             ),
             '[]'::json
           )
           FROM complaint_attachments a
+          LEFT JOIN staff_users creator ON creator.id = a.created_by_staff_user_id
           WHERE a.complaint_id = c.id
         ) AS attachments
        FROM complaints c
@@ -311,15 +343,20 @@ router.get('/complaints/:id', async (req, res) => {
                 'id', a.id,
                 'originalName', a.original_name,
                 'mimeType', a.mime_type,
-                'sizeBytes', a.size_bytes,
-                'width', a.width,
-                'height', a.height
-              )
+                 'sizeBytes', a.size_bytes,
+                 'width', a.width,
+                 'height', a.height,
+                 'source', a.attachment_source,
+                 'createdAt', a.created_at,
+                 'staffNote', a.staff_note,
+                 'staffName', creator.display_name
+               )
               ORDER BY a.sort_order, a.created_at
             ),
             '[]'::json
           )
           FROM complaint_attachments a
+          LEFT JOIN staff_users creator ON creator.id = a.created_by_staff_user_id
           WHERE a.complaint_id = c.id
         ) AS attachments
        FROM complaints c
@@ -335,7 +372,7 @@ router.get('/complaints/:id', async (req, res) => {
   const selectedComplaint = result.rows[0];
 
   if (
-    req.admin.role !== 'admin' &&
+    !canReadAllDepartments(req.admin.role) &&
     selectedComplaint.department_id !== getAdminDepartmentId(req)
   ) {
     throw new ApiError(403, 'ไม่มีสิทธิ์ดูเรื่องร้องเรียนของหน่วยงานอื่น');
@@ -366,6 +403,170 @@ router.get('/complaints/:id', async (req, res) => {
     data: { ...complaint, canEditStatus, history: history.rows },
   });
 });
+
+router.post(
+  '/complaints/:id/work-attachments',
+  uploadComplaintImages,
+  async (req, res) => {
+    const idResult = z.string().uuid().safeParse(req.params.id);
+    if (!idResult.success) throw new ApiError(400, 'รหัสรายการไม่ถูกต้อง');
+
+    if (!req.files?.length) {
+      throw new ApiError(400, 'กรุณาเลือกรูปผลการดำเนินงานอย่างน้อย 1 ภาพ');
+    }
+
+    const noteResult = z.string().trim().max(500).optional().safeParse(
+      req.body?.note || undefined,
+    );
+    if (!noteResult.success) {
+      throw new ApiError(400, 'หมายเหตุรูปภาพยาวเกิน 500 ตัวอักษร');
+    }
+
+    const complaintResult = await pool.query(
+      `SELECT id, department_id, status
+         FROM complaints
+        WHERE id = $1`,
+      [req.params.id],
+    );
+    if (complaintResult.rowCount === 0) throw new ApiError(404, 'ไม่พบรายการ');
+
+    const selectedComplaint = complaintResult.rows[0];
+    if (
+      req.admin.role !== 'admin' &&
+      !isSameDepartmentStaff(req, selectedComplaint.department_id)
+    ) {
+      throw new ApiError(
+        403,
+        'สามารถแนบรูปได้เฉพาะเรื่องร้องเรียนของหน่วยงานตนเอง',
+      );
+    }
+
+    const storedImages = await processAndStoreImages(req.files);
+    const client = await pool.connect();
+    let updatedComplaint;
+
+    try {
+      await client.query('BEGIN');
+      const currentResult = await client.query(
+        `SELECT *
+           FROM complaints
+          WHERE id = $1
+          FOR UPDATE`,
+        [req.params.id],
+      );
+      if (currentResult.rowCount === 0) throw new ApiError(404, 'ไม่พบรายการ');
+
+      const current = currentResult.rows[0];
+      const sortResult = await client.query(
+        `SELECT COALESCE(max(sort_order), -1)::integer AS last_sort_order
+           FROM complaint_attachments
+          WHERE complaint_id = $1`,
+        [req.params.id],
+      );
+      const firstSortOrder = sortResult.rows[0].last_sort_order + 1;
+
+      for (let index = 0; index < storedImages.length; index += 1) {
+        const image = storedImages[index];
+        await client.query(
+          `INSERT INTO complaint_attachments (
+            complaint_id,
+            storage_key,
+            original_name,
+            mime_type,
+            size_bytes,
+            width,
+            height,
+            sha256,
+            sort_order,
+            attachment_source,
+            created_by_staff_user_id,
+            staff_note
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'staff',$10,$11)`,
+          [
+            req.params.id,
+            image.storageKey,
+            image.originalName,
+            image.mimeType,
+            image.sizeBytes,
+            image.width,
+            image.height,
+            image.sha256,
+            firstSortOrder + index,
+            req.admin.id,
+            noteResult.data || null,
+          ],
+        );
+      }
+
+      const updateResult = await client.query(
+        `UPDATE complaints
+            SET status = CASE
+                  WHEN status = 'new' THEN 'received'::complaint_status
+                  ELSE status
+                END,
+                updated_at = current_timestamp
+          WHERE id = $1
+          RETURNING *`,
+        [req.params.id],
+      );
+      updatedComplaint = updateResult.rows[0];
+
+      await client.query(
+        `INSERT INTO complaint_status_history (
+          complaint_id,
+          old_status,
+          new_status,
+          note,
+          actor_type,
+          actor_staff_user_id
+        ) VALUES ($1,$2,$3,$4,'staff',$5)`,
+        [
+          req.params.id,
+          current.status,
+          updatedComplaint.status,
+          noteResult.data ||
+            `เจ้าหน้าที่แนบรูปผลการดำเนินงาน ${storedImages.length} ภาพ`,
+          req.admin.id,
+        ],
+      );
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      await cleanupStoredImages(storedImages);
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    await writeAudit(
+      req,
+      'complaint.work_attachments.create',
+      'complaint',
+      req.params.id,
+      {
+        imageCount: storedImages.length,
+        note: noteResult.data || null,
+      },
+    );
+
+    if (selectedComplaint.status !== updatedComplaint.status) {
+      await notifyStatusChanged(
+        updatedComplaint,
+        noteResult.data || 'เจ้าหน้าที่รับเรื่องและแนบรูปการดำเนินงานแล้ว',
+      );
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'บันทึกรูปผลการดำเนินงานเรียบร้อย',
+      data: {
+        imageCount: storedImages.length,
+        status: updatedComplaint.status,
+      },
+    });
+  },
+);
 
 router.patch('/complaints/:id/status', async (req, res) => {
   const idResult = z.string().uuid().safeParse(req.params.id);
@@ -474,10 +675,13 @@ router.patch('/complaints/:id/status', async (req, res) => {
 
 
 router.get('/dashboard', async (req, res) => {
-  const scopeByDepartment = req.admin.role !== 'admin';
-  const departmentId = getAdminDepartmentId(req);
+  const globalAccess = canReadAllDepartments(req.admin.role);
+  const departmentId = globalAccess
+    ? getRequestedDepartmentId(req)
+    : getAdminDepartmentId(req);
+  const scopeByDepartment = Boolean(departmentId);
 
-  if (scopeByDepartment && !departmentId) {
+  if (!globalAccess && !departmentId) {
     throw new ApiError(403, 'บัญชีนี้ยังไม่ได้กำหนดหน่วยงาน');
   }
 
@@ -705,7 +909,7 @@ router.get('/departments', async (req, res) => {
   res.json({ success: true, data: result.rows });
 });
 
-router.get('/staff', requireRoles('admin', 'supervisor'), async (req, res) => {
+router.get('/staff', requireRoles('admin', 'supervisor', 'executive', 'exclusive'), async (req, res) => {
   const values = [];
   let where = `WHERE su.is_active = true`;
 
@@ -895,7 +1099,7 @@ router.patch(
 );
 
 
-router.get('/governance/categories', requireRoles('admin','supervisor'), async (req, res) => {
+router.get('/governance/categories', requireRoles('admin','supervisor','executive','exclusive'), async (req, res) => {
   const result = await pool.query(`SELECT id, code, name_th, sla_hours, is_active, created_at, updated_at FROM complaint_categories ORDER BY sort_order, name_th`);
   res.json({ success: true, data: result.rows });
 });
@@ -919,7 +1123,7 @@ router.patch('/governance/categories/:id', requireRoles('admin'), async (req, re
   res.json({ success:true, data:result.rows[0] });
 });
 
-router.get('/governance/departments', requireRoles('admin','supervisor'), async (req, res) => {
+router.get('/governance/departments', requireRoles('admin','supervisor','executive','exclusive'), async (req, res) => {
   const result = await pool.query(`SELECT id, code, name_th, is_active, created_at, updated_at FROM departments ORDER BY name_th`);
   res.json({ success:true, data:result.rows });
 });
@@ -941,7 +1145,7 @@ router.patch('/governance/departments/:id', requireRoles('admin'), async (req, r
   res.json({success:true,data:result.rows[0]});
 });
 
-router.get('/governance/users', requireRoles('admin'), async (req, res) => {
+router.get('/governance/users', requireRoles('admin','executive','exclusive'), async (req, res) => {
   const result = await pool.query(
     `SELECT
         su.id,
@@ -967,7 +1171,7 @@ router.post('/governance/users', requireRoles('admin'), async (req, res) => {
     username: z.string().trim().min(3).max(100),
     password: z.string().min(12).max(200),
     displayName: z.string().trim().min(2).max(200),
-    role: z.enum(['officer', 'supervisor', 'admin']),
+    role: z.enum(['officer', 'supervisor', 'executive', 'admin']),
     departmentId: z.string().uuid().nullable().optional(),
   });
 
@@ -981,11 +1185,11 @@ router.post('/governance/users', requireRoles('admin'), async (req, res) => {
   }
 
   const departmentId =
-    parsed.data.role === 'admin'
+    ['admin', 'executive'].includes(parsed.data.role)
       ? null
       : parsed.data.departmentId ?? null;
 
-  if (parsed.data.role !== 'admin' && !departmentId) {
+  if (['officer', 'supervisor'].includes(parsed.data.role) && !departmentId) {
     throw new ApiError(
       400,
       'Officer และ Supervisor ต้องกำหนดหน่วยงาน',
@@ -1090,7 +1294,7 @@ router.patch('/governance/users/:id', requireRoles('admin'), async (req, res) =>
 
   const schema = z.object({
     displayName: z.string().trim().min(2).max(200),
-    role: z.enum(['officer', 'supervisor', 'admin']),
+    role: z.enum(['officer', 'supervisor', 'executive', 'admin']),
     departmentId: z.string().uuid().nullable().optional(),
     isActive: z.boolean(),
     password: z.string().min(12).max(200).nullable().optional(),
@@ -1106,13 +1310,13 @@ router.patch('/governance/users/:id', requireRoles('admin'), async (req, res) =>
   }
 
   const departmentId =
-    parsed.data.role === 'admin'
+    ['admin', 'executive'].includes(parsed.data.role)
       ? null
       : parsed.data.departmentId ?? null;
 
   if (
     parsed.data.isActive &&
-    parsed.data.role !== 'admin' &&
+    ['officer', 'supervisor'].includes(parsed.data.role) &&
     !departmentId
   ) {
     throw new ApiError(
@@ -1227,8 +1431,8 @@ router.patch('/governance/users/:id', requireRoles('admin'), async (req, res) =>
   res.json({ success: true, data: result.rows[0] });
 });
 
-router.get('/governance/audit-logs', requireRoles('admin','supervisor'), async (req, res) => {
-  if (req.admin.role === 'admin') {
+router.get('/governance/audit-logs', requireRoles('admin','supervisor','executive','exclusive'), async (req, res) => {
+  if (canReadAllDepartments(req.admin.role)) {
     const result = await pool.query(
       `SELECT
           a.id,
@@ -1277,15 +1481,18 @@ router.get('/governance/audit-logs', requireRoles('admin','supervisor'), async (
   res.json({ success: true, data: result.rows });
 });
 
-router.get('/reports/export.csv', requireRoles('admin', 'supervisor'), async (req, res) => {
-  const departmentId = getAdminDepartmentId(req);
+router.get('/reports/export.csv', requireRoles('admin', 'supervisor', 'executive', 'exclusive'), async (req, res) => {
+  const globalAccess = canReadAllDepartments(req.admin.role);
+  const departmentId = globalAccess
+    ? getRequestedDepartmentId(req)
+    : getAdminDepartmentId(req);
 
-  if (req.admin.role !== 'admin' && !departmentId) {
+  if (!globalAccess && !departmentId) {
     throw new ApiError(403, 'บัญชีนี้ยังไม่ได้กำหนดหน่วยงาน');
   }
 
-  const values = req.admin.role === 'admin' ? [] : [departmentId];
-  const where = req.admin.role === 'admin' ? '' : 'WHERE c.department_id = $1';
+  const values = departmentId ? [departmentId] : [];
+  const where = departmentId ? 'WHERE c.department_id = $1' : '';
 
   const result=await pool.query(`SELECT c.reference_no,c.title,cc.name_th AS category,c.status,c.priority,c.contact_name,c.contact_phone,c.location_text,d.name_th AS department,su.display_name AS assigned_staff,c.created_at,c.due_at,c.completed_at FROM complaints c JOIN complaint_categories cc ON cc.id=c.category_id LEFT JOIN departments d ON d.id=c.department_id LEFT JOIN staff_users su ON su.id=c.assigned_staff_user_id ${where} ORDER BY c.created_at DESC`, values);
   const headers=['reference_no','title','category','status','priority','contact_name','contact_phone','location_text','department','assigned_staff','created_at','due_at','completed_at'];
