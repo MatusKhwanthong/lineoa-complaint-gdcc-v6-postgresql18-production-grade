@@ -42,6 +42,7 @@ async function boot(){clear('#pageAlert');try{const [d,dep]=await Promise.all([a
 function applyRoleVisibility(){
   const isElevated=currentUser?.role==='admin'||currentUser?.role==='supervisor'||isExecutive();
   const isAdmin=currentUser?.role==='admin';
+  if(!isAdmin&&governanceMode==='users')governanceMode='categories';
 
   // Officer ไม่มีหน้าตั้งค่าระบบ
   document.querySelector('[data-view="settings"]')?.classList.toggle('hidden',!isElevated);
@@ -49,8 +50,8 @@ function applyRoleVisibility(){
   const exportBtn=$('#exportCsvButton');
   if(exportBtn)exportBtn.classList.toggle('hidden',!isElevated);
 
-  // ผู้บริหารดูผู้ใช้งานได้ แต่ไม่มีปุ่มเพิ่มหรือแก้ไข
-  document.querySelector('.governance-tab[data-governance="users"]')?.classList.toggle('hidden',!(isAdmin||isExecutive()));
+  // เฉพาะ Admin เท่านั้นที่เห็นแท็บผู้ใช้งานและ ACCESS CONTROL
+  document.querySelector('.governance-tab[data-governance="users"]')?.classList.toggle('hidden',!isAdmin);
 
   // เฉพาะ Admin เพิ่ม/แก้ไขหมวดหมู่ หน่วยงาน และผู้ใช้งาน
   $('#addCategoryButton')?.classList.toggle('hidden',!isAdmin);
@@ -381,7 +382,7 @@ async function loadGovernance(mode='categories'){setGovernanceTab(mode);try{
     }
   }
   if(mode==='departments'){const r=await api('/api/admin/governance/departments');const isAdmin=currentUser?.role==='admin';const headers=isAdmin?['รหัส','ชื่อหน่วยงาน','สถานะ','จัดการ']:['รหัส','ชื่อหน่วยงาน','สถานะ'];$('#departmentGovernanceTable').innerHTML=governanceTable(headers,r.data.map(x=>`<tr><td class="case-ref">${escapeHtml(x.code)}</td><td>${escapeHtml(x.name_th)}</td><td>${x.is_active?'<span class="v3-badge status-completed">เปิดใช้งาน</span>':'<span class="v3-badge status-cancelled">ปิดใช้งาน</span>'}</td>${isAdmin?`<td><button class="governance-edit edit-department" data-id="${x.id}" data-json='${escapeHtml(JSON.stringify(x))}'>แก้ไข</button></td>`:''}</tr>`));if(isAdmin)document.querySelectorAll('.edit-department').forEach(b=>b.onclick=()=>openGovernanceDialog('department',JSON.parse(b.dataset.json)))}
-  if(mode==='users'){if(currentUser?.role!=='admin'&&!isExecutive()){throw new Error('ไม่มีสิทธิ์ดูข้อมูลผู้ใช้งาน')}const r=await api('/api/admin/governance/users');const isAdmin=currentUser?.role==='admin';const headers=['ชื่อผู้ใช้','ชื่อแสดงผล','สิทธิ์','หน่วยงาน','เข้าสู่ระบบล่าสุด','สถานะ',...(isAdmin?['จัดการ']:[])];$('#userGovernanceTable').innerHTML=governanceTable(headers,r.data.map(x=>`<tr><td class="case-ref">${escapeHtml(x.username)}</td><td>${escapeHtml(x.display_name)}</td><td>${escapeHtml(roleLabel(x.role))}</td><td>${escapeHtml(x.department_name|| (['admin','executive','exclusive'].includes(x.role)?'ทุกหน่วยงาน':'ยังไม่ได้กำหนด'))}</td><td>${fmt(x.last_login_at)}</td><td>${x.is_active?'<span class="v3-badge status-completed">ใช้งาน</span>':'<span class="v3-badge status-cancelled">ระงับ</span>'}</td>${isAdmin?`<td><button class="governance-edit edit-user" data-json='${escapeHtml(JSON.stringify(x))}'>แก้ไข</button></td>`:''}</tr>`));if(isAdmin)document.querySelectorAll('.edit-user').forEach(b=>b.onclick=()=>openGovernanceDialog('user',JSON.parse(b.dataset.json)))}
+  if(mode==='users'){if(currentUser?.role!=='admin'){throw new Error('เฉพาะผู้ดูแลระบบเท่านั้นที่ดูข้อมูลผู้ใช้งานได้')}const r=await api('/api/admin/governance/users');const headers=['ชื่อผู้ใช้','ชื่อแสดงผล','สิทธิ์','หน่วยงาน','เข้าสู่ระบบล่าสุด','สถานะ','จัดการ'];$('#userGovernanceTable').innerHTML=governanceTable(headers,r.data.map(x=>`<tr><td class="case-ref">${escapeHtml(x.username)}</td><td>${escapeHtml(x.display_name)}</td><td>${escapeHtml(roleLabel(x.role))}</td><td>${escapeHtml(x.department_name|| (['admin','executive','exclusive'].includes(x.role)?'ทุกหน่วยงาน':'ยังไม่ได้กำหนด'))}</td><td>${fmt(x.last_login_at)}</td><td>${x.is_active?'<span class="v3-badge status-completed">ใช้งาน</span>':'<span class="v3-badge status-cancelled">ระงับ</span>'}</td><td><button class="governance-edit edit-user" data-json='${escapeHtml(JSON.stringify(x))}'>แก้ไข</button></td></tr>`));document.querySelectorAll('.edit-user').forEach(b=>b.onclick=()=>openGovernanceDialog('user',JSON.parse(b.dataset.json)))}
   if(mode==='audit'){const r=await api('/api/admin/governance/audit-logs');$('#auditGovernanceTable').innerHTML=governanceTable(['วันเวลา','ผู้ดำเนินการ','กิจกรรม','ประเภท','รายละเอียด'],r.data.map(x=>`<tr><td>${fmt(x.created_at)}</td><td>${escapeHtml(x.actor_name||'ระบบ')}</td><td class="case-ref">${escapeHtml(x.action)}</td><td>${escapeHtml(x.entity_type)}</td><td><div class="audit-detail" title="${escapeHtml(JSON.stringify(x.detail))}">${escapeHtml(JSON.stringify(x.detail))}</div></td></tr>`))}
 }catch(e){show('#pageAlert',e.message)}}
 function dialogField(label,name,type='text',value='',extra=''){return `<label>${label}<input name="${name}" type="${type}" value="${escapeHtml(value??'')}" ${extra}></label>`}

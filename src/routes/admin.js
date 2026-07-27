@@ -1145,7 +1145,7 @@ router.patch('/governance/departments/:id', requireRoles('admin'), async (req, r
   res.json({success:true,data:result.rows[0]});
 });
 
-router.get('/governance/users', requireRoles('admin','executive','exclusive'), async (req, res) => {
+router.get('/governance/users', requireRoles('admin'), async (req, res) => {
   const result = await pool.query(
     `SELECT
         su.id,
