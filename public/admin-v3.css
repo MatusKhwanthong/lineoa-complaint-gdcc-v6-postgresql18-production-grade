@@ -860,9 +860,9 @@ input,select,textarea{
   }
 }
 
-/* Show coordinate cases directly below the map on mobile. */
+/* Keep the coordinate list visibly attached below the map on mobile. */
 @media(max-width:900px){
-  .map-view-active .map-command-grid{
+  #mapView:not(.hidden) .map-command-grid{
     display:flex;
     width:100%;
     min-width:0;
@@ -870,11 +870,21 @@ input,select,textarea{
     gap:.75rem;
   }
 
-  .map-view-active .map-panel-card{
+  #mapView:not(.hidden) .map-panel-card{
     order:1;
   }
 
-  .map-view-active .map-list-card{
+  #mapView:not(.hidden) .map-panel-card .v3-card-head p:last-child{
+    display:none;
+  }
+
+  #mapView:not(.hidden) #adminComplaintMap.smart-map-stage{
+    height:clamp(230px,34svh,320px);
+    min-height:230px;
+    max-height:320px;
+  }
+
+  #mapView:not(.hidden) .map-list-card{
     display:block;
     order:2;
     width:100%;
@@ -882,7 +892,11 @@ input,select,textarea{
     overflow:visible;
   }
 
-  .map-view-active .location-list{
+  #mapView:not(.hidden) .map-list-card .v3-card-head h2{
+    margin-bottom:.65rem;
+  }
+
+  #mapView:not(.hidden) .location-list{
     display:grid;
     height:auto;
     max-height:none;
@@ -890,20 +904,15 @@ input,select,textarea{
     overflow:visible;
   }
 
-  .map-view-active .location-case{
+  #mapView:not(.hidden) .location-case{
     width:100%;
   }
 }
 
 @media(max-width:430px){
-  .map-view-active #adminComplaintMap.smart-map-stage{
-    height:320px;
-    height:min(40svh,320px);
-    min-height:260px;
-    max-height:320px;
-  }
-
-  .map-view-active .map-list-card .v3-card-head h2{
-    margin-bottom:.65rem;
+  #mapView:not(.hidden) #adminComplaintMap.smart-map-stage{
+    height:clamp(220px,30svh,270px);
+    min-height:220px;
+    max-height:270px;
   }
 }
