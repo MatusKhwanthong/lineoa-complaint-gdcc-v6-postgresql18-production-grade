@@ -59,7 +59,7 @@ nano .env
 ```env
 UPLOAD_DIR=/app/uploads
 MAX_UPLOAD_FILES=5
-MAX_UPLOAD_MB=8
+MAX_UPLOAD_MB=10
 GOOGLE_MAPS_API_KEY=...
 ```
 

@@ -120,7 +120,7 @@ async function openCase(id){
   const canEditStatus=Boolean(c.canEditStatus);
   const depOptions=[...(currentUser?.role==='admin'?['<option value="">ยังไม่มอบหมาย</option>']:[]),...departments.map(d=>`<option value="${d.id}" ${d.id===c.department_id?'selected':''}>${escapeHtml(d.name_th)}</option>`)].join('');
   const assignSection=canManageAssignment?`<section class="drawer-section"><h3>การดำเนินงาน</h3><div class="drawer-form"><label>หน่วยงาน<select id="assignDepartment" ${canChangeDepartment?'':'disabled'}>${depOptions}</select>${canChangeDepartment?'':'<small class="muted">เฉพาะ Admin และ Supervisor เท่านั้นที่เปลี่ยนหน่วยงานได้</small>'}</label><div class="two"><label>ความสำคัญ<select id="assignPriority"><option value="low">ต่ำ</option><option value="normal">ปกติ</option><option value="high">สูง</option><option value="urgent">เร่งด่วน</option></select></label><label>กำหนดเสร็จ<input id="assignDue" type="datetime-local"></label></div><label>หมายเหตุ<input id="assignNote" placeholder="รายละเอียดการดำเนินงาน"></label><button id="assignButton" class="v3-primary">บันทึกการดำเนินงาน</button></div></section>`:'';
-  const workImageSection=`<section class="drawer-section"><h3>รูปภาพผลการดำเนินงาน</h3>${staffImages?`<div class="drawer-images">${staffImages}</div>`:'<p class="muted">ยังไม่มีรูปผลการดำเนินงานจากเจ้าหน้าที่</p>'}${canEditStatus?`<div class="drawer-form work-image-form"><label>แนบรูปจากการปฏิบัติงาน<input id="workImages" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple></label><label>หมายเหตุ<input id="workImageNote" maxlength="500" placeholder="เช่น ดำเนินการซ่อมแซมเรียบร้อย"></label><button id="uploadWorkImagesButton" class="v3-primary" type="button">อัปโหลดรูปการดำเนินงาน</button></div>`:''}</section>`;
+  const workImageSection=`<section class="drawer-section"><h3>รูปภาพผลการดำเนินงาน</h3>${staffImages?`<div class="drawer-images">${staffImages}</div>`:'<p class="muted">ยังไม่มีรูปผลการดำเนินงานจากเจ้าหน้าที่</p>'}${canEditStatus?`<div class="drawer-form work-image-form"><div id="workImageAlert" class="alert hidden"></div><label>แนบรูปจากการปฏิบัติงาน<input id="workImages" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple><small class="muted">รองรับ JPEG, PNG, WebP, HEIC และ HEIF ขนาดไม่เกิน 10 MB ต่อภาพ</small></label><label>หมายเหตุ<input id="workImageNote" maxlength="500" placeholder="เช่น ดำเนินการซ่อมแซมเรียบร้อย"></label><button id="uploadWorkImagesButton" class="v3-primary" type="button">อัปโหลดรูปการดำเนินงาน</button></div>`:''}</section>`;
   const statusSection=`<section class="drawer-section"><h3>อัปเดตสถานะ</h3>${canEditStatus?`<div class="drawer-form"><select id="newStatus">${Object.entries(statusLabels).map(([v,l])=>`<option value="${v}" ${v===c.status?'selected':''}>${l}</option>`).join('')}</select><input id="statusNote" placeholder="หมายเหตุถึงประชาชน"><button id="statusButton" class="v3-primary">บันทึกสถานะและแจ้ง LINE</button></div>`:'<p class="muted">คุณสามารถแก้ไขสถานะได้เฉพาะเรื่องที่ได้รับมอบหมายเท่านั้น</p>'}</section>`;
   $('#drawerContent').innerHTML=`<div class="drawer-hero">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.category_name)} • ${priorityLabels[c.priority]||c.priority||'ปกติ'}</p></div><div class="drawer-grid"><div class="drawer-field"><span>ผู้ร้องเรียน</span><b>${escapeHtml(c.contact_name)}</b></div><div class="drawer-field"><span>โทรศัพท์</span><b>${escapeHtml(c.contact_phone)}</b></div><div class="drawer-field"><span>หน่วยงาน</span><b>${escapeHtml(c.department_name||'ยังไม่มอบหมาย')}</b></div></div><section class="drawer-section"><h3>รายละเอียดเรื่องร้องเรียน</h3><p>${escapeHtml(c.description)}</p><p><b>สถานที่:</b> ${escapeHtml(c.location_text)}</p>${c.latitude!=null&&c.longitude!=null?`<a class="map-link-button" target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">⌖ เปิดใน OpenStreetMap</a>`:''}</section>${citizenImages?`<section class="drawer-section"><h3>รูปภาพจากผู้แจ้ง</h3><div class="drawer-images">${citizenImages}</div></section>`:''}${workImageSection}${assignSection}${statusSection}<section class="drawer-section"><h3>ประวัติการดำเนินงาน</h3><div class="timeline">${(c.history||[]).map(h=>`<div class="timeline-item"><b>${statusLabels[h.new_status]||h.new_status}</b><p>${escapeHtml(h.note||'-')}</p><small>${fmt(h.created_at)} ${h.staff_name?`• ${escapeHtml(h.staff_name)}`:''}</small></div>`).join('')}</div></section>`;
   if(canManageAssignment){$('#assignPriority').value=c.priority||'normal';if(c.due_at)$('#assignDue').value=new Date(c.due_at).toISOString().slice(0,16);$('#assignButton').onclick=()=>assignCase(c.id)}
@@ -133,10 +133,29 @@ async function openCase(id){
 async function uploadWorkImages(id){
   const files=[...($('#workImages')?.files||[])];
   if(!files.length){
-    show('#pageAlert','กรุณาเลือกรูปผลการดำเนินงานอย่างน้อย 1 ภาพ');
+    show('#workImageAlert','อัปโหลดไม่ได้: กรุณาเลือกรูปผลการดำเนินงานอย่างน้อย 1 ภาพ');
+    return;
+  }
+  const allowedTypes=new Set(['image/jpeg','image/png','image/webp','image/heic','image/heif']);
+  const maxBytes=10*1024*1024;
+  const emptyFile=files.find(file=>file.size===0);
+  if(emptyFile){
+    show('#workImageAlert',`อัปโหลดไม่ได้: ไฟล์ “${emptyFile.name}” ไม่มีข้อมูลหรือไฟล์เสีย`);
+    return;
+  }
+  const unsupportedFile=files.find(file=>!allowedTypes.has(file.type.toLowerCase()));
+  if(unsupportedFile){
+    show('#workImageAlert',`อัปโหลดไม่ได้: ไฟล์ “${unsupportedFile.name}” เป็นชนิดที่ไม่รองรับ กรุณาใช้ JPEG, PNG, WebP, HEIC หรือ HEIF`);
+    return;
+  }
+  const oversizedFile=files.find(file=>file.size>maxBytes);
+  if(oversizedFile){
+    const sizeMb=(oversizedFile.size/1024/1024).toFixed(1);
+    show('#workImageAlert',`อัปโหลดไม่ได้: ไฟล์ “${oversizedFile.name}” มีขนาด ${sizeMb} MB ซึ่งเกินกำหนด 10 MB`);
     return;
   }
   const button=$('#uploadWorkImagesButton');
+  clear('#workImageAlert');
   button.disabled=true;
   button.textContent='กำลังอัปโหลด…';
   try{
@@ -151,7 +170,10 @@ async function uploadWorkImages(id){
     show('#pageAlert',result.message||'บันทึกรูปผลการดำเนินงานเรียบร้อย','success');
     await openCase(id);
   }catch(error){
-    show('#pageAlert',error.message);
+    const reason=error instanceof TypeError
+      ?'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่'
+      :error.message||'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
+    show('#workImageAlert',reason.startsWith('อัปโหลดไม่สำเร็จ')?reason:`อัปโหลดไม่สำเร็จ: ${reason}`);
     button.disabled=false;
     button.textContent='อัปโหลดรูปการดำเนินงาน';
   }

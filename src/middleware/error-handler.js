@@ -16,10 +16,10 @@ export function errorHandler(error, req, res, next) {
 
   if (error instanceof multer.MulterError) {
     const messages = {
-      LIMIT_FILE_SIZE: `รูปภาพแต่ละไฟล์ต้องไม่เกิน ${config.maxUploadMb} MB`,
-      LIMIT_FILE_COUNT: `แนบรูปภาพได้ไม่เกิน ${config.maxUploadFiles} ภาพ`,
-      LIMIT_UNEXPECTED_FILE: `แนบรูปภาพได้ไม่เกิน ${config.maxUploadFiles} ภาพ`,
-      LIMIT_FIELD_COUNT: 'แบบฟอร์มมีจำนวนช่องมากเกินกำหนด',
+      LIMIT_FILE_SIZE: `อัปโหลดไม่สำเร็จ: รูปภาพแต่ละไฟล์ต้องไม่เกิน ${config.maxUploadMb} MB`,
+      LIMIT_FILE_COUNT: `อัปโหลดไม่สำเร็จ: แนบรูปภาพได้ไม่เกิน ${config.maxUploadFiles} ภาพ`,
+      LIMIT_UNEXPECTED_FILE: `อัปโหลดไม่สำเร็จ: แนบรูปภาพได้ไม่เกิน ${config.maxUploadFiles} ภาพ`,
+      LIMIT_FIELD_COUNT: 'อัปโหลดไม่สำเร็จ: แบบฟอร์มมีจำนวนช่องมากเกินกำหนด',
     };
     return res.status(400).json({ success: false, message: messages[error.code] || 'ไม่สามารถรับไฟล์ที่อัปโหลดได้', requestId: req.requestId });
   }

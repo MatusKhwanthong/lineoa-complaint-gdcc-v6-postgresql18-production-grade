@@ -12,7 +12,7 @@ import {
   cleanupStoredImages,
   processAndStoreImages,
   sendStoredImage,
-  uploadComplaintImages,
+  uploadStaffWorkImages,
 } from '../services/uploads.js';
 
 const router = Router();
@@ -406,7 +406,7 @@ router.get('/complaints/:id', async (req, res) => {
 
 router.post(
   '/complaints/:id/work-attachments',
-  uploadComplaintImages,
+  uploadStaffWorkImages,
   async (req, res) => {
     const idResult = z.string().uuid().safeParse(req.params.id);
     if (!idResult.success) throw new ApiError(400, 'รหัสรายการไม่ถูกต้อง');
@@ -441,7 +441,16 @@ router.post(
       );
     }
 
-    const storedImages = await processAndStoreImages(req.files);
+    let storedImages;
+    try {
+      storedImages = await processAndStoreImages(req.files);
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(
+        500,
+        'อัปโหลดไม่สำเร็จ: เซิร์ฟเวอร์ไม่สามารถประมวลผลหรือบันทึกไฟล์รูปภาพได้ กรุณาลองใหม่',
+      );
+    }
     const client = await pool.connect();
     let updatedComplaint;
 
@@ -534,7 +543,11 @@ router.post(
     } catch (error) {
       await client.query('ROLLBACK');
       await cleanupStoredImages(storedImages);
-      throw error;
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(
+        500,
+        'อัปโหลดไม่สำเร็จ: ไม่สามารถบันทึกข้อมูลรูปภาพลงระบบได้ กรุณาลองใหม่',
+      );
     } finally {
       client.release();
     }

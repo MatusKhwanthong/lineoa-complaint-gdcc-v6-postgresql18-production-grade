@@ -42,7 +42,7 @@ const config = {
 
   uploadDir: (process.env.UPLOAD_DIR || (isProduction ? '/tmp/uploads' : './uploads')).trim(),
   maxUploadFiles: asInteger(process.env.MAX_UPLOAD_FILES, 5),
-  maxUploadMb: asInteger(process.env.MAX_UPLOAD_MB, 8),
+  maxUploadMb: asInteger(process.env.MAX_UPLOAD_MB, 10),
   maxImageDimension: asInteger(process.env.MAX_IMAGE_DIMENSION, 1920),
   jpegQuality: asInteger(process.env.JPEG_QUALITY, 85),
 

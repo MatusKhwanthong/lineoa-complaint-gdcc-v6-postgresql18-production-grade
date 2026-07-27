@@ -15,25 +15,33 @@ const allowedDeclaredMimeTypes = new Set([
   'image/heif',
 ]);
 
-export const uploadComplaintImages = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    files: config.maxUploadFiles,
-    fileSize: config.maxUploadMb * 1024 * 1024,
-    fields: 20,
-  },
-  fileFilter(req, file, callback) {
-    if (!allowedDeclaredMimeTypes.has(file.mimetype.toLowerCase())) {
-      return callback(
-        new ApiError(
-          400,
-          'รองรับเฉพาะไฟล์ภาพ JPEG, PNG, WebP, HEIC หรือ HEIF',
-        ),
-      );
-    }
-    return callback(null, true);
-  },
-}).array('images', config.maxUploadFiles);
+function imageFileFilter(req, file, callback) {
+  if (!allowedDeclaredMimeTypes.has(file.mimetype.toLowerCase())) {
+    return callback(
+      new ApiError(
+        400,
+        `ไฟล์ “${safeOriginalName(file.originalname)}” เป็นชนิดที่ไม่รองรับ กรุณาใช้ JPEG, PNG, WebP, HEIC หรือ HEIF`,
+      ),
+    );
+  }
+  return callback(null, true);
+}
+
+function createImageUpload(fileSizeMb) {
+  return multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      files: config.maxUploadFiles,
+      fileSize: fileSizeMb * 1024 * 1024,
+      fields: 20,
+    },
+    fileFilter: imageFileFilter,
+  }).array('images', config.maxUploadFiles);
+}
+
+export const uploadComplaintImages = createImageUpload(config.maxUploadMb);
+
+export const uploadStaffWorkImages = createImageUpload(config.maxUploadMb);
 
 export async function ensureUploadDirectory() {
   await fs.mkdir(config.uploadDir, { recursive: true, mode: 0o750 });
