@@ -924,6 +924,51 @@ input,select,textarea{
     font-weight:700;
   }
 
+  #mapView:not(.hidden) .mobile-map-case-select{
+    display:block!important;
+    width:100%!important;
+    height:288px!important;
+    min-height:288px!important;
+    padding:.35rem!important;
+    border:1px solid var(--line)!important;
+    border-radius:13px!important;
+    background:#fff!important;
+    color:var(--ink)!important;
+    font-size:16px!important;
+    visibility:visible!important;
+    opacity:1!important;
+  }
+
+  #mapView:not(.hidden) .mobile-map-case-select option{
+    min-height:44px;
+    padding:.75rem .6rem;
+    white-space:normal;
+  }
+
+  #mapView:not(.hidden) .mobile-map-native-actions{
+    display:grid!important;
+    grid-template-columns:1fr 1fr;
+    gap:.55rem;
+    margin-top:.65rem;
+  }
+
+  #mapView:not(.hidden) .mobile-map-native-actions button,
+  #mapView:not(.hidden) .mobile-map-native-actions a{
+    display:inline-flex!important;
+    min-height:46px;
+    align-items:center;
+    justify-content:center;
+    padding:.65rem .7rem;
+    border:1px solid #0b8d7d;
+    border-radius:10px;
+    background:#fff;
+    color:var(--green);
+    font-size:.82rem;
+    font-weight:900;
+    text-align:center;
+    text-decoration:none;
+  }
+
   #mapView:not(.hidden) .mobile-map-locations>.mobile-location-item{
     display:block!important;
     position:relative!important;

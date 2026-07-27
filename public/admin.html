@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#083f3a" />
     <title>Smart City Complaint Command Center</title>
     <link rel="stylesheet" href="/styles.css" />
-    <link rel="stylesheet" href="/admin-v3.css?v=20260727-mobile-locations-6" />
+    <link rel="stylesheet" href="/admin-v3.css?v=20260727-mobile-native-list-1" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +19,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin="anonymous"
     ></script>
-    <script type="module" src="/admin.js?v=20260727-mobile-locations-6"></script>
+    <script type="module" src="/admin.js?v=20260727-mobile-native-list-1"></script>
   </head>
   <body class="admin-v3-body">
     <section id="loginPanel" class="v3-login">
@@ -286,6 +286,18 @@
               รายการที่มีพิกัด
               <span id="mobileMapComplaintCount" class="mobile-location-count"></span>
             </h2>
+            <select
+              id="mobileMapCaseSelect"
+              class="mobile-map-case-select"
+              size="6"
+              aria-label="เลือกรายการร้องเรียนที่มีพิกัด"
+            >
+              <option>กำลังโหลดรายการ…</option>
+            </select>
+            <div class="mobile-map-native-actions">
+              <button id="mobileFocusMapCase" type="button">ดูบนแผนที่</button>
+              <a id="mobileOpenMapCase" target="_blank" rel="noopener">เปิด OpenStreetMap →</a>
+            </div>
           </section>
         </section>
 
