@@ -1,7 +1,7 @@
 ﻿const statusLabels={new:'รับเรื่องใหม่',received:'รับเรื่องแล้ว',assigned:'มอบหมายแล้ว',in_progress:'กำลังดำเนินการ',waiting_for_info:'รอข้อมูลเพิ่มเติม',completed:'เสร็จสิ้น',rejected:'ไม่รับดำเนินการ',cancelled:'ยกเลิก'};
 const statusColors={new:'#e7a61b',received:'#3f79db',assigned:'#568ce8',in_progress:'#8d59d7',waiting_for_info:'#b170d7',completed:'#19a676',rejected:'#db5555',cancelled:'#8a9692'};
 const priorityLabels={low:'ต่ำ',normal:'ปกติ',high:'สูง',urgent:'เร่งด่วน'};
-const $=s=>document.querySelector(s);let token=sessionStorage.getItem('adminToken');let currentPage=1;let departments=[];let staff=[];let dashboardCache=null;let currentUser=null;let governanceMode='categories';let governanceEditing=null;let smartGeoMap=null;let smartGeoMarkers=null;let smartGeoMarkerById=new Map();let smartGeoResizeTimer=null;
+const $=s=>document.querySelector(s);let token=sessionStorage.getItem('adminToken');let currentPage=1;let departments=[];let staff=[];let dashboardCache=null;let currentUser=null;let governanceMode='categories';let governanceEditing=null;let smartGeoMap=null;let smartGeoMarkers=null;let smartGeoMarkerById=new Map();let smartGeoResizeTimer=null;let selectedMapMonth='all';
 function show(id,msg,type='error'){const e=$(id);e.textContent=msg;e.className=`alert ${type}`;e.classList.remove('hidden')}
 function clear(id){const e=$(id);e.className='alert hidden';e.textContent=''}
 async function api(path,opt={}){const h=new Headers(opt.headers||{});if(!(opt.body instanceof FormData))h.set('content-type','application/json');if(token)h.set('authorization',`Bearer ${token}`);const r=await fetch(path,{...opt,headers:h});const j=await r.json().catch(()=>({}));if(r.status===401&&path!='/api/admin/login')logout();if(!r.ok)throw new Error(j.message||`เกิดข้อผิดพลาด ${r.status}`);return j}
@@ -127,13 +127,47 @@ function createMapPopup(c){
   popup.append(title,reference,location,link);
   return popup;
 }
+function mapCaseMonthKey(value){
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime()))return'unknown';
+  return`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+}
+function mapCaseMonthLabel(key){
+  if(key==='unknown')return'ไม่ระบุเดือน';
+  const [year,month]=key.split('-').map(Number);
+  return new Intl.DateTimeFormat('th-TH',{month:'long',year:'numeric'}).format(new Date(year,month-1,1));
+}
+function groupMapCasesByMonth(rows){
+  const groups=new Map();
+  rows.forEach(row=>{
+    const key=mapCaseMonthKey(row.created_at);
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(row);
+  });
+  return[...groups.entries()];
+}
 function renderMapCases(){
-  const rows=(dashboardCache?.mapCases||[]).filter(c=>Number.isFinite(Number(c.latitude))&&Number.isFinite(Number(c.longitude)));
-  const listMarkup=rows.map(c=>`<article class="location-case">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.reference_no)}</p><p>${escapeHtml(c.location_text||'-')}</p><div class="map-case-actions"><button type="button" class="focus-map-case" data-case-id="${escapeHtml(c.reference_no)}">ดูบนแผนที่</button><a target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">เปิด OpenStreetMap →</a></div></article>`).join('')||'<p class="muted">ยังไม่มีรายการที่มีพิกัด</p>';
+  const allRows=(dashboardCache?.mapCases||[]).filter(c=>Number.isFinite(Number(c.latitude))&&Number.isFinite(Number(c.longitude)));
+  const months=[...new Set(allRows.map(c=>mapCaseMonthKey(c.created_at)))];
+  if(selectedMapMonth!=='all'&&!months.includes(selectedMapMonth))selectedMapMonth='all';
+  const monthOptions=[`<option value="all">ทุกเดือน (${allRows.length} รายการ)</option>`,...months.map(month=>`<option value="${escapeHtml(month)}">${escapeHtml(mapCaseMonthLabel(month))}</option>`)].join('');
+  ['#mapMonthFilter','#mobileMapMonthFilter'].forEach(selector=>{
+    const filter=$(selector);
+    if(!filter)return;
+    filter.innerHTML=monthOptions;
+    filter.value=selectedMapMonth;
+    filter.onchange=()=>{
+      selectedMapMonth=filter.value;
+      renderMapCases();
+    };
+  });
+  const rows=selectedMapMonth==='all'?allRows:allRows.filter(c=>mapCaseMonthKey(c.created_at)===selectedMapMonth);
+  const groups=groupMapCasesByMonth(rows);
+  const listMarkup=groups.map(([month,cases])=>`<section class="map-month-group"><h3 class="map-month-title"><span>${escapeHtml(mapCaseMonthLabel(month))}</span><small>${cases.length} รายการ</small></h3>${cases.map(c=>`<article class="location-case">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.reference_no)}</p><p>${escapeHtml(c.location_text||'-')}</p><div class="map-case-actions"><button type="button" class="focus-map-case" data-case-id="${escapeHtml(c.reference_no)}">ดูบนแผนที่</button><a target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">เปิด OpenStreetMap →</a></div></article>`).join('')}</section>`).join('')||'<p class="muted">ไม่มีรายการในเดือนที่เลือก</p>';
   $('#mapComplaintList').innerHTML=listMarkup;
   const mobileList=$('#mobileMapCaseList');
   if(mobileList){
-    mobileList.innerHTML=rows.map(c=>`<button type="button" class="mobile-map-case-row" data-case-id="${escapeHtml(c.reference_no)}" aria-label="แสดงเรื่อง ${escapeHtml(c.title||'-')} บนแผนที่"><span class="mobile-map-case-heading">${badge(c.status)}<strong>${escapeHtml(c.title||'-')}</strong></span><span class="mobile-map-case-reference">${escapeHtml(c.reference_no)}</span><span class="mobile-map-case-location">${escapeHtml(c.location_text||'-')}</span></button>`).join('')||'<p class="muted">ยังไม่มีรายการที่มีพิกัด</p>';
+    mobileList.innerHTML=groups.map(([month,cases])=>`<section class="mobile-map-month-group"><h3 class="map-month-title"><span>${escapeHtml(mapCaseMonthLabel(month))}</span><small>${cases.length} รายการ</small></h3>${cases.map(c=>`<button type="button" class="mobile-map-case-row" data-case-id="${escapeHtml(c.reference_no)}" aria-label="แสดงเรื่อง ${escapeHtml(c.title||'-')} บนแผนที่"><span class="mobile-map-case-heading">${badge(c.status)}<strong>${escapeHtml(c.title||'-')}</strong></span><span class="mobile-map-case-reference">${escapeHtml(c.reference_no)}</span><span class="mobile-map-case-date">${escapeHtml(fmt(c.created_at))}</span><span class="mobile-map-case-location">${escapeHtml(c.location_text||'-')}</span></button>`).join('')}</section>`).join('')||'<p class="muted">ไม่มีรายการในเดือนที่เลือก</p>';
   }
   const mobileCount=$('#mobileMapComplaintCount');
   if(mobileCount)mobileCount.textContent=`(${rows.length} รายการ)`;

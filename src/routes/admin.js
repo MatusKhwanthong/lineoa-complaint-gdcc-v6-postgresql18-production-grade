@@ -645,6 +645,7 @@ router.get('/dashboard', async (req, res) => {
         c.latitude,
         c.longitude,
         c.location_text,
+        c.created_at,
         cc.name_th AS category_name
       FROM complaints c
       JOIN complaint_categories cc ON cc.id = c.category_id
