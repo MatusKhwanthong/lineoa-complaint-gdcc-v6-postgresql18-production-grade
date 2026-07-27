@@ -819,3 +819,53 @@ input,select,textarea{
 .hero-secondary{
   color:#fff;
 }
+
+/* Collapsible complaint tracking cards. */
+.complaint-card{
+  cursor:pointer;
+  transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;
+}
+
+.complaint-card:hover,
+.complaint-card:focus-visible{
+  border-color:#C9AAD9;
+  box-shadow:0 14px 30px rgba(109,76,125,.14);
+  outline:none;
+}
+
+.complaint-card:not(.complaint-card-expanded)>h3{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.complaint-toggle-hint{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.6rem;
+  margin-top:.7rem;
+  padding-top:.65rem;
+  border-top:1px solid var(--line);
+  color:#6D4C7D;
+  font-weight:800;
+}
+
+.complaint-toggle-hint::after{
+  content:"⌄";
+  font-size:1.15rem;
+  transition:transform .2s ease;
+}
+
+.complaint-card-expanded .complaint-toggle-hint::after{
+  transform:rotate(180deg);
+}
+
+.complaint-card-details{
+  margin-top:.75rem;
+  padding-top:.2rem;
+}
+
+.complaint-card-expanded{
+  border-color:#C9AAD9;
+}

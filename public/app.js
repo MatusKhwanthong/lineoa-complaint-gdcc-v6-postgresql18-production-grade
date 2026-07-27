@@ -490,6 +490,9 @@ async function loadComplaints() {
     for (const item of result.data) {
       const article = document.createElement('article');
       article.className = 'complaint-card';
+      article.tabIndex = 0;
+      article.setAttribute('role', 'button');
+      article.setAttribute('aria-expanded', 'false');
 
       const heading = document.createElement('div');
       heading.className = 'card-heading';
@@ -559,16 +562,51 @@ async function loadComplaints() {
 
       const timeline = createComplaintTimeline(item);
 
-      article.append(
-        heading,
-        title,
-        category,
+      const details = document.createElement('div');
+      details.className = 'complaint-card-details hidden';
+      details.id = `complaint-details-${String(item.id || item.reference_no).replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+      details.append(
         description,
         location,
         actions,
         galleryContainer,
-        date,
         timeline,
+      );
+
+      const toggleHint = document.createElement('small');
+      toggleHint.className = 'complaint-toggle-hint';
+      toggleHint.textContent = 'แตะเพื่อดูรายละเอียดและไทม์ไลน์';
+
+      article.setAttribute('aria-controls', details.id);
+
+      const toggleDetails = () => {
+        const expanded = article.getAttribute('aria-expanded') === 'true';
+        article.setAttribute('aria-expanded', String(!expanded));
+        article.classList.toggle('complaint-card-expanded', !expanded);
+        details.classList.toggle('hidden', expanded);
+        toggleHint.textContent = expanded
+          ? 'แตะเพื่อดูรายละเอียดและไทม์ไลน์'
+          : 'แตะเพื่อย่อรายละเอียด';
+      };
+
+      article.addEventListener('click', (event) => {
+        if (event.target.closest('a, button')) return;
+        toggleDetails();
+      });
+
+      article.addEventListener('keydown', (event) => {
+        if (event.target !== article || !['Enter', ' '].includes(event.key)) return;
+        event.preventDefault();
+        toggleDetails();
+      });
+
+      article.append(
+        heading,
+        title,
+        category,
+        date,
+        toggleHint,
+        details,
       );
       list.append(article);
     }
