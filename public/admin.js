@@ -133,6 +133,8 @@ function renderMapCases(){
   $('#mapComplaintList').innerHTML=listMarkup;
   const mobileList=$('#mobileMapComplaintList');
   if(mobileList)mobileList.innerHTML=listMarkup;
+  const mobileCount=$('#mobileMapComplaintCount');
+  if(mobileCount)mobileCount.textContent=`(${rows.length} รายการ)`;
   const mapElement=$('#adminComplaintMap');
   try{
     const map=ensureSmartGeoMap();

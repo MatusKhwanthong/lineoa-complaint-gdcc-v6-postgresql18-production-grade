@@ -860,7 +860,7 @@ input,select,textarea{
   }
 }
 
-.mobile-map-list-card{
+.mobile-map-locations{
   display:none;
 }
 
@@ -892,24 +892,42 @@ input,select,textarea{
     display:none!important;
   }
 
-  #mapView:not(.hidden) .mobile-map-list-card{
+  #mapView:not(.hidden) .mobile-map-locations{
     display:block;
-    order:2;
+    position:relative;
+    z-index:1;
     width:100%;
     height:auto;
     min-height:0;
     max-height:none;
-    margin-top:0;
+    margin-top:.75rem;
+    padding:.8rem;
+    border:1px solid var(--line);
+    border-radius:16px;
+    background:#fff;
+    box-shadow:var(--shadow);
     overflow:visible;
   }
 
-  #mapView:not(.hidden) .mobile-map-list-card .v3-card-head h2{
-    margin-bottom:.65rem;
+  #mapView:not(.hidden) .mobile-map-locations h2{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:.4rem;
+    margin:.2rem 0 .7rem;
+    font-size:1.05rem;
+  }
+
+  #mapView:not(.hidden) .mobile-location-count{
+    color:var(--muted);
+    font-size:.78rem;
+    font-weight:700;
   }
 
   #mapView:not(.hidden) .mobile-location-list{
     display:grid;
     position:static;
+    align-content:start;
     visibility:visible;
     width:100%;
     height:auto;
@@ -920,8 +938,14 @@ input,select,textarea{
     opacity:1;
   }
 
-  #mapView:not(.hidden) .location-case{
+  #mapView:not(.hidden) .mobile-location-list>.location-case{
+    display:block;
+    position:static;
     width:100%;
+    height:auto;
+    min-height:0;
+    visibility:visible;
+    opacity:1;
   }
 }
 

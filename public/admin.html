@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#083f3a" />
     <title>Smart City Complaint Command Center</title>
     <link rel="stylesheet" href="/styles.css" />
-    <link rel="stylesheet" href="/admin-v3.css?v=20260727-mobile-locations-3" />
+    <link rel="stylesheet" href="/admin-v3.css?v=20260727-mobile-locations-4" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +19,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin="anonymous"
     ></script>
-    <script type="module" src="/admin.js?v=20260727-supervisor-department-1"></script>
+    <script type="module" src="/admin.js?v=20260727-supervisor-department-2"></script>
   </head>
   <body class="admin-v3-body">
     <section id="loginPanel" class="v3-login">
@@ -265,15 +265,6 @@
                 aria-label="แผนที่ OpenStreetMap แสดงจุดร้องเรียน"
               ></div>
             </div>
-            <section class="v3-card mobile-map-list-card" aria-labelledby="mobileMapLocationsTitle">
-              <div class="v3-card-head">
-                <div>
-                  <p class="overline">LOCATIONS</p>
-                  <h2 id="mobileMapLocationsTitle">รายการที่มีพิกัด</h2>
-                </div>
-              </div>
-              <div id="mobileMapComplaintList" class="mobile-location-list"></div>
-            </section>
             <div class="v3-card map-list-card">
               <div class="v3-card-head">
                 <div>
@@ -284,6 +275,18 @@
               <div id="mapComplaintList" class="location-list"></div>
             </div>
           </div>
+          <section class="mobile-map-locations" aria-labelledby="mobileMapLocationsTitle">
+            <p class="overline">LOCATIONS</p>
+            <h2 id="mobileMapLocationsTitle">
+              รายการที่มีพิกัด
+              <span id="mobileMapComplaintCount" class="mobile-location-count"></span>
+            </h2>
+            <div
+              id="mobileMapComplaintList"
+              class="mobile-location-list"
+              aria-live="polite"
+            ></div>
+          </section>
         </section>
 
         <section id="reportsView" class="admin-view hidden">
