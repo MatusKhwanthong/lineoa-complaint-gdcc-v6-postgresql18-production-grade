@@ -2,7 +2,7 @@
 
 /* all section map and detail */
 #mapView{
-  width:80%;
+  width:100%;
   height:70%;
   min-height:320px;
   border:1px solid var(--line);
