@@ -131,11 +131,9 @@ function renderMapCases(){
   const rows=(dashboardCache?.mapCases||[]).filter(c=>Number.isFinite(Number(c.latitude))&&Number.isFinite(Number(c.longitude)));
   const listMarkup=rows.map(c=>`<article class="location-case">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.reference_no)}</p><p>${escapeHtml(c.location_text||'-')}</p><div class="map-case-actions"><button type="button" class="focus-map-case" data-case-id="${escapeHtml(c.reference_no)}">ดูบนแผนที่</button><a target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">เปิด OpenStreetMap →</a></div></article>`).join('')||'<p class="muted">ยังไม่มีรายการที่มีพิกัด</p>';
   $('#mapComplaintList').innerHTML=listMarkup;
-  const mobileSelect=$('#mobileMapCaseSelect');
-  if(mobileSelect){
-    mobileSelect.innerHTML=rows.map(c=>`<option value="${escapeHtml(c.reference_no)}">${escapeHtml(`${statusLabels[c.status]||c.status} • ${c.title||'-'} • ${c.reference_no}`)}</option>`).join('')||'<option value="">ยังไม่มีรายการที่มีพิกัด</option>';
-    mobileSelect.disabled=!rows.length;
-    if(rows.length)mobileSelect.selectedIndex=0;
+  const mobileList=$('#mobileMapCaseList');
+  if(mobileList){
+    mobileList.innerHTML=rows.map(c=>`<button type="button" class="mobile-map-case-row" data-case-id="${escapeHtml(c.reference_no)}" aria-label="แสดงเรื่อง ${escapeHtml(c.title||'-')} บนแผนที่"><span class="mobile-map-case-heading">${badge(c.status)}<strong>${escapeHtml(c.title||'-')}</strong></span><span class="mobile-map-case-reference">${escapeHtml(c.reference_no)}</span><span class="mobile-map-case-location">${escapeHtml(c.location_text||'-')}</span></button>`).join('')||'<p class="muted">ยังไม่มีรายการที่มีพิกัด</p>';
   }
   const mobileCount=$('#mobileMapComplaintCount');
   if(mobileCount)mobileCount.textContent=`(${rows.length} รายการ)`;
@@ -184,26 +182,17 @@ function renderMapCases(){
         marker.openPopup();
       };
     });
-    const mobileFocus=$('#mobileFocusMapCase');
-    const mobileOpen=$('#mobileOpenMapCase');
-    const syncMobileSelection=()=>{
-      const selected=rows.find(c=>String(c.reference_no)===mobileSelect?.value);
-      if(mobileFocus)mobileFocus.disabled=!selected;
-      if(mobileOpen){
-        if(selected)mobileOpen.href=openStreetMapUrl(selected.latitude,selected.longitude);
-        else mobileOpen.removeAttribute('href');
-        mobileOpen.setAttribute('aria-disabled',String(!selected));
-      }
-    };
-    if(mobileSelect)mobileSelect.onchange=syncMobileSelection;
-    if(mobileFocus)mobileFocus.onclick=()=>{
-      const marker=smartGeoMarkerById.get(mobileSelect?.value);
-      if(!marker)return;
-      map.setView(marker.getLatLng(),17,{animate:false});
-      marker.openPopup();
-      mapElement.scrollIntoView({behavior:'smooth',block:'center'});
-    };
-    syncMobileSelection();
+    document.querySelectorAll('.mobile-map-case-row').forEach(row=>{
+      row.onclick=()=>{
+        const marker=smartGeoMarkerById.get(row.dataset.caseId);
+        if(!marker)return;
+        document.querySelectorAll('.mobile-map-case-row.is-active').forEach(item=>item.classList.remove('is-active'));
+        row.classList.add('is-active');
+        map.setView(marker.getLatLng(),17,{animate:false});
+        marker.openPopup();
+        mapElement.scrollIntoView({behavior:'smooth',block:'center'});
+      };
+    });
     window.setTimeout(()=>{
       map.invalidateSize({pan:false,debounceMoveend:true});
       fitMapToMarkers();

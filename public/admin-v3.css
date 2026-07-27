@@ -938,49 +938,58 @@ input,select,textarea{
     font-weight:700;
   }
 
-  #mapView:not(.hidden) .mobile-map-case-select{
-    display:block!important;
-    width:100%!important;
-    height:288px!important;
-    min-height:288px!important;
-    padding:.35rem!important;
-    border:1px solid var(--line)!important;
-    border-radius:13px!important;
-    background:#fff!important;
-    color:var(--ink)!important;
-    font-size:16px!important;
-    visibility:visible!important;
-    opacity:1!important;
+  #mapView:not(.hidden) .mobile-map-case-list{
+    display:grid;
+    width:100%;
+    gap:.65rem;
   }
 
-  #mapView:not(.hidden) .mobile-map-case-select option{
-    min-height:44px;
-    padding:.75rem .6rem;
-    white-space:normal;
-  }
-
-  #mapView:not(.hidden) .mobile-map-native-actions{
-    display:grid!important;
-    grid-template-columns:1fr 1fr;
-    gap:.55rem;
-    margin-top:.65rem;
-  }
-
-  #mapView:not(.hidden) .mobile-map-native-actions button,
-  #mapView:not(.hidden) .mobile-map-native-actions a{
-    display:inline-flex!important;
-    min-height:46px;
-    align-items:center;
-    justify-content:center;
-    padding:.65rem .7rem;
-    border:1px solid #0b8d7d;
-    border-radius:10px;
+  #mapView:not(.hidden) .mobile-map-case-row{
+    display:grid;
+    width:100%;
+    min-height:0;
+    gap:.3rem;
+    padding:.8rem;
+    border:1px solid var(--line);
+    border-bottom:2px solid #b8d9d1;
+    border-radius:12px;
     background:#fff;
-    color:var(--green);
-    font-size:.82rem;
-    font-weight:900;
-    text-align:center;
-    text-decoration:none;
+    color:var(--ink);
+    text-align:left;
+    cursor:pointer;
+    -webkit-tap-highlight-color:rgba(11,105,91,.12);
+  }
+
+  #mapView:not(.hidden) .mobile-map-case-row:active,
+  #mapView:not(.hidden) .mobile-map-case-row.is-active{
+    border-color:#18a389;
+    background:#edf8f5;
+    box-shadow:0 0 0 3px rgba(24,163,137,.12);
+  }
+
+  #mapView:not(.hidden) .mobile-map-case-heading{
+    display:flex;
+    align-items:center;
+    gap:.5rem;
+    padding-bottom:.55rem;
+    margin-bottom:.2rem;
+    border-bottom:1px solid var(--line);
+  }
+
+  #mapView:not(.hidden) .mobile-map-case-heading strong{
+    min-width:0;
+    flex:1;
+    overflow-wrap:anywhere;
+    font-size:.92rem;
+  }
+
+  #mapView:not(.hidden) .mobile-map-case-reference,
+  #mapView:not(.hidden) .mobile-map-case-location{
+    display:block;
+    color:var(--muted);
+    font-size:.78rem;
+    line-height:1.45;
+    overflow-wrap:anywhere;
   }
 
   #mapView:not(.hidden) .mobile-map-locations>.mobile-location-item{
