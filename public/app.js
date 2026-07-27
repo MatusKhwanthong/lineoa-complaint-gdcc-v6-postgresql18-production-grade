@@ -6,7 +6,7 @@ const state = {
   map: null,
   mapMarker: null,
   maxUploadFiles: 5,
-  maxFileMb: 8,
+  maxFileMb: 10,
   previewUrls: [],
   lineProfile: null,
 };
@@ -23,6 +23,27 @@ const statusLabels = {
 };
 
 const $ = (selector) => document.querySelector(selector);
+
+function openImageViewer(src, caption = 'รูปภาพประกอบ') {
+  const dialog = $('#imageViewer');
+  const image = $('#imageViewerImage');
+  image.src = src;
+  image.alt = caption;
+  $('#imageViewerCaption').textContent = caption;
+  if (!dialog.open) dialog.showModal();
+}
+
+function setupImageViewer() {
+  const dialog = $('#imageViewer');
+  const close = () => dialog.close();
+  $('#imageViewerClose').addEventListener('click', close);
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) close();
+  });
+  dialog.addEventListener('close', () => {
+    $('#imageViewerImage').removeAttribute('src');
+  });
+}
 
 function showAlert(message, type = 'error') {
   const alert = $('#alert');
@@ -84,7 +105,7 @@ async function initializeLiff() {
 
     const config = await configResponse.json();
     state.maxUploadFiles = config.uploadLimits?.maxFiles || 5;
-    state.maxFileMb = config.uploadLimits?.maxFileMb || 8;
+    state.maxFileMb = config.uploadLimits?.maxFileMb || 10;
 
     $('#privacyLink').href = config.privacyPolicyUrl || '/privacy.html';
     $('#imageHelp').textContent =
@@ -361,6 +382,16 @@ function renderSelectedImages() {
     image.src = url;
     image.alt = file.name;
     image.loading = 'lazy';
+    image.tabIndex = 0;
+    image.setAttribute('role', 'button');
+    image.setAttribute('aria-label', `ดูรูป ${file.name}`);
+    image.addEventListener('click', () => openImageViewer(url, file.name));
+    image.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openImageViewer(url, file.name);
+      }
+    });
 
     const caption = document.createElement('figcaption');
     caption.textContent = file.name;
@@ -387,23 +418,29 @@ async function loadProtectedGallery(container, attachments, urlBuilder, authToke
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
 
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.target = '_blank';
-      link.rel = 'noopener';
+      const imageButton = document.createElement('button');
+      imageButton.type = 'button';
+      imageButton.className = 'image-thumbnail-button';
+      imageButton.setAttribute('aria-label', `ดู${attachment.originalName || 'รูปภาพประกอบ'}`);
 
       const image = document.createElement('img');
       image.src = objectUrl;
       image.alt = attachment.originalName || 'รูปภาพประกอบ';
       image.loading = 'lazy';
 
-      link.append(image);
-      gallery.append(link);
+      imageButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        openImageViewer(objectUrl, image.alt);
+      });
+      imageButton.append(image);
+      gallery.append(imageButton);
     }
 
     container.replaceChildren(gallery);
+    return true;
   } catch (error) {
     container.innerHTML = `<p class="error-text">${error.message}</p>`;
+    return false;
   }
 }
 
@@ -547,19 +584,20 @@ async function loadComplaints() {
         galleryContainer.className = 'gallery-container hidden';
         const imageButton = document.createElement('button');
         imageButton.type = 'button';
-        imageButton.className = 'secondary';
-        imageButton.textContent = `${buttonLabel} (${attachments.length})`;
-        imageButton.addEventListener('click', async () => {
-          galleryContainer.classList.toggle('hidden');
+        imageButton.className = 'secondary attachment-view-trigger';
+        imageButton.innerHTML = `<span aria-hidden="true">▣</span> ดู${buttonLabel} <b>${attachments.length}</b>`;
+        imageButton.addEventListener('click', async (event) => {
+          event.stopPropagation();
+          galleryContainer.classList.remove('hidden');
           if (!galleryContainer.dataset.loaded) {
-            galleryContainer.dataset.loaded = 'true';
-            await loadProtectedGallery(
+            const loaded = await loadProtectedGallery(
               galleryContainer,
               attachments,
               (attachment) =>
                 `/api/complaints/${encodeURIComponent(item.reference_no)}/attachments/${attachment.id}`,
               state.idToken,
             );
+            if (!loaded) return;
             if (isStaff) {
               const staffNames = [
                 ...new Set(attachments.map((attachment) => attachment.staffName).filter(Boolean)),
@@ -578,7 +616,10 @@ async function loadComplaints() {
                 .join(' — ');
               galleryContainer.prepend(sourceNote);
             }
+            galleryContainer.dataset.loaded = 'true';
           }
+          const firstImage = galleryContainer.querySelector('.image-thumbnail-button img');
+          if (firstImage) openImageViewer(firstImage.src, firstImage.alt);
         });
         actions.append(imageButton);
         galleries.append(galleryContainer);
@@ -1032,6 +1073,7 @@ function setupForm() {
 }
 
 async function main() {
+  setupImageViewer();
   setupTabs();
   setupLocation();
   setupForm();

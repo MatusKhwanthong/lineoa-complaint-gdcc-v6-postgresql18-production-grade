@@ -885,3 +885,147 @@ input,select,textarea{
   font-size:.8rem;
   line-height:1.5;
 }
+
+.attachment-view-trigger{
+  display:inline-flex;
+  align-items:center;
+  gap:.5rem;
+  min-height:46px;
+  padding:.7rem .9rem;
+  border:1px solid #C9AAD9;
+  border-radius:13px;
+  background:linear-gradient(135deg,#F7F0FA,#EADCF1);
+  color:#5B3A66;
+  font-weight:900;
+  box-shadow:0 7px 16px rgba(109,76,125,.12);
+}
+
+.attachment-view-trigger b{
+  display:grid;
+  place-items:center;
+  min-width:24px;
+  height:24px;
+  padding:0 .35rem;
+  border-radius:999px;
+  background:#B58BD3;
+  color:#fff;
+}
+
+.image-thumbnail-button{
+  position:relative;
+  overflow:hidden;
+  display:block;
+  width:100%;
+  padding:0;
+  border:2px solid transparent;
+  border-radius:12px;
+  background:#F7F0FA;
+  cursor:pointer;
+}
+
+.image-thumbnail-button:hover,
+.image-thumbnail-button:focus-visible{
+  border-color:#B58BD3;
+  outline:none;
+}
+
+.admin-image-thumbnail span{
+  position:absolute;
+  right:.45rem;
+  bottom:.45rem;
+  padding:.3rem .55rem;
+  border-radius:999px;
+  background:rgba(62,42,71,.86);
+  color:#fff;
+  font-size:.72rem;
+  font-weight:900;
+}
+
+.image-load-error{
+  grid-column:1/-1;
+  margin:.25rem 0;
+  padding:.65rem .75rem;
+  border-radius:10px;
+  background:#FFF0EE;
+  color:#A52C24;
+  font-size:.8rem;
+  font-weight:800;
+}
+
+.image-viewer{
+  width:min(960px,calc(100% - 1.5rem));
+  max-width:none;
+  max-height:calc(100svh - 1.5rem);
+  padding:0;
+  border:0;
+  border-radius:20px;
+  background:#17121A;
+  color:#fff;
+  box-shadow:0 30px 90px rgba(0,0,0,.55);
+}
+
+.image-viewer::backdrop{
+  background:rgba(18,10,21,.82);
+  backdrop-filter:blur(5px);
+}
+
+.image-viewer-panel header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:1rem;
+  padding:.8rem 1rem;
+}
+
+.image-viewer-panel h2{
+  margin:0;
+  font-size:1rem;
+}
+
+.image-viewer-panel img{
+  display:block;
+  width:100%;
+  max-height:76svh;
+  object-fit:contain;
+  background:#0E0B0F;
+}
+
+.image-viewer-panel p{
+  overflow:hidden;
+  margin:0;
+  padding:.75rem 1rem;
+  color:#EADFF0;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.image-viewer-close{
+  display:grid;
+  place-items:center;
+  width:44px;
+  height:44px;
+  flex:0 0 44px;
+  border:1px solid rgba(255,255,255,.25);
+  border-radius:50%;
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  font-size:1.7rem;
+  cursor:pointer;
+}
+
+@media(max-width:650px){
+  .attachment-view-trigger{
+    flex:1 1 auto;
+    justify-content:center;
+  }
+
+  .image-viewer{
+    width:calc(100% - 1rem);
+    max-height:calc(100svh - 1rem);
+    border-radius:16px;
+  }
+
+  .image-viewer-panel img{
+    max-height:72svh;
+  }
+}

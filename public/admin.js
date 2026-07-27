@@ -9,6 +9,7 @@ function fmt(v){if(!v)return'-';return new Intl.DateTimeFormat('th-TH',{dateStyl
 function badge(s){return `<span class="v3-badge status-${s}">${statusLabels[s]||s}</span>`}
 function priorityBadge(priority='normal'){const value=priorityLabels[priority]?priority:'normal';return `<span class="v3-priority priority-${value}">${priorityLabels[value]}</span>`}
 function openStreetMapUrl(lat,lng){const latitude=Number(lat).toFixed(6);const longitude=Number(lng).toFixed(6);return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(latitude)}&mlon=${encodeURIComponent(longitude)}#map=18/${encodeURIComponent(latitude)}/${encodeURIComponent(longitude)}`}
+function openAdminImageViewer(src,caption='รูปภาพประกอบ'){const dialog=$('#adminImageViewer');const image=$('#adminImageViewerImage');image.src=src;image.alt=caption;$('#adminImageViewerCaption').textContent=caption;if(!dialog.open)dialog.showModal()}
 function loginView(){$('#loginPanel').classList.remove('hidden');$('#appShell').classList.add('hidden')}
 function isExecutive(){return ['executive','exclusive'].includes(currentUser?.role)}
 function addExecutiveDepartmentScope(params){if(isExecutive()&&executiveDepartmentId)params.set('departmentId',executiveDepartmentId);return params}
@@ -94,14 +95,14 @@ async function loadComplaints(page=1){
   }catch(e){show('#pageAlert',e.message)}
 }
 function renderPagination(p){let html='';for(let i=1;i<=p.totalPages;i++){if(p.totalPages>8&&Math.abs(i-p.page)>2&&i!==1&&i!==p.totalPages)continue;html+=`<button class="page-btn ${i===p.page?'active':''}" data-page="${i}">${i}</button>`}$('#pagination').innerHTML=html;document.querySelectorAll('.page-btn').forEach(b=>b.onclick=()=>loadComplaints(Number(b.dataset.page)))}
-async function loadImage(id){const r=await fetch(`/api/admin/attachments/${id}`,{headers:{authorization:`Bearer ${token}`}});if(!r.ok)throw new Error('ไม่สามารถโหลดรูปภาพ');return URL.createObjectURL(await r.blob())}
+async function loadImage(id){const r=await fetch(`/api/admin/attachments/${id}`,{headers:{authorization:`Bearer ${token}`}});if(!r.ok){const result=await r.json().catch(()=>({}));throw new Error(result.message||`ไม่สามารถโหลดรูปภาพ (${r.status})`)}return URL.createObjectURL(await r.blob())}
 async function attachmentMarkup(attachments=[]){
   let images='';
   for(const attachment of attachments){
     try{
       const imageUrl=await loadImage(attachment.id);
-      images+=`<a href="${imageUrl}" target="_blank"><img src="${imageUrl}" alt="${escapeHtml(attachment.originalName||'รูปประกอบ')}"></a>`;
-    }catch{}
+      images+=`<button type="button" class="image-thumbnail-button admin-image-thumbnail" data-image-url="${imageUrl}" data-image-caption="${escapeHtml(attachment.originalName||'รูปประกอบ')}" aria-label="ดูรูปภาพ"><img src="${imageUrl}" alt="${escapeHtml(attachment.originalName||'รูปประกอบ')}"><span>ดูรูป</span></button>`;
+    }catch(error){images+=`<p class="image-load-error">โหลดรูป “${escapeHtml(attachment.originalName||'รูปประกอบ')}” ไม่สำเร็จ: ${escapeHtml(error.message)}</p>`}
   }
   return images;
 }
@@ -129,6 +130,7 @@ async function openCase(id){
     $('#uploadWorkImagesButton').onclick=()=>uploadWorkImages(c.id);
   }
   $('#detailDrawer').classList.remove('hidden');
+  document.querySelectorAll('.admin-image-thumbnail').forEach(button=>button.onclick=()=>openAdminImageViewer(button.dataset.imageUrl,button.dataset.imageCaption));
 }
 async function uploadWorkImages(id){
   const files=[...($('#workImages')?.files||[])];
@@ -441,4 +443,5 @@ function closeGovernanceDialog(){
 }
 
 $('#loginForm').onsubmit=async e=>{e.preventDefault();clear('#adminAlert');try{const r=await api('/api/admin/login',{method:'POST',body:JSON.stringify({username:$('#username').value,password:$('#password').value})});token=r.data.token;sessionStorage.setItem('adminToken',token);appView(r.data.user);await boot()}catch(err){show('#adminAlert',err.message)}};
+const adminImageViewer=$('#adminImageViewer');$('#adminImageViewerClose').onclick=()=>adminImageViewer.close();adminImageViewer.addEventListener('click',event=>{if(event.target===adminImageViewer)adminImageViewer.close()});adminImageViewer.addEventListener('close',()=>$('#adminImageViewerImage').removeAttribute('src'));
 $('#logoutButton').onclick=logout;$('#mobileLogoutButton').onclick=logout;$('#closeDrawer').onclick=()=>$('#detailDrawer').classList.add('hidden');$('#governanceCancelButton').onclick=closeGovernanceDialog;$('#governanceCloseButton').onclick=closeGovernanceDialog;$('#governanceDialog').addEventListener('cancel',e=>{e.preventDefault();closeGovernanceDialog()});$('#governanceDialog').addEventListener('click',e=>{if(e.target===$('#governanceDialog'))closeGovernanceDialog()});$('#searchButton').onclick=()=>loadComplaints(1);$('#statusFilter').onchange=()=>loadComplaints(1);$('#complaintMonthFilter').onchange=()=>loadComplaints(1);$('#searchInput').onkeydown=e=>{if(e.key==='Enter')loadComplaints(1)};$('#refreshAll').onclick=async()=>{try{await refreshScopedData()}catch(err){show('#pageAlert',err.message)}};$('#executiveDepartmentFilter').onchange=async e=>{executiveDepartmentId=e.target.value;try{await refreshScopedData()}catch(err){show('#pageAlert',err.message)}};document.querySelectorAll('.v3-nav-item').forEach(b=>b.onclick=()=>switchView(b.dataset.view));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>switchView(b.dataset.go));document.querySelectorAll('.governance-tab').forEach(b=>b.onclick=()=>loadGovernance(b.dataset.governance));$('#addCategoryButton').onclick=()=>{if(currentUser?.role==='admin')openGovernanceDialog('category')};$('#addDepartmentButton').onclick=()=>{if(currentUser?.role==='admin')openGovernanceDialog('department')};$('#addUserButton').onclick=()=>{if(currentUser?.role==='admin')openGovernanceDialog('user')};$('#refreshAuditButton').onclick=()=>loadGovernance('audit');$('#governanceForm').onsubmit=async e=>{e.preventDefault();try{await saveGovernance()}catch(err){show('#pageAlert',err.message)}};$('#exportCsvButton').onclick=async()=>{try{await exportCsv()}catch(err){show('#pageAlert',err.message)}};loadMe();

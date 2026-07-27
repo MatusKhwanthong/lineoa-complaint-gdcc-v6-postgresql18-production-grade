@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#07564d" />
     <title>Smart City Citizen Service</title>
-  <link rel="stylesheet" href="/styles.css?v=20260727-work-images-1" />
+  <link rel="stylesheet" href="/styles.css?v=20260727-image-viewer-1" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +19,7 @@
       crossorigin="anonymous"
     ></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script type="module" src="/app.js?v=20260727-work-images-1"></script>
+    <script type="module" src="/app.js?v=20260727-image-viewer-1"></script>
   </head>
   <body class="citizen-v3-body">
     <header class="citizen-header">
@@ -331,5 +331,15 @@
       </div>
       <small>ข้อมูลของท่านได้รับการคุ้มครองตามนโยบายของหน่วยงาน</small>
     </footer>
+    <dialog id="imageViewer" class="image-viewer" aria-labelledby="imageViewerTitle">
+      <div class="image-viewer-panel">
+        <header>
+          <h2 id="imageViewerTitle">ดูรูปภาพ</h2>
+          <button id="imageViewerClose" class="image-viewer-close" type="button" aria-label="ปิดรูปภาพ">×</button>
+        </header>
+        <img id="imageViewerImage" alt="" />
+        <p id="imageViewerCaption"></p>
+      </div>
+    </dialog>
   </body>
 </html>
