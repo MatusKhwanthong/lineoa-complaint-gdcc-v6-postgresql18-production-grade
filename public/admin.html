@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#083f3a" />
     <title>Smart City Complaint Command Center</title>
     <link rel="stylesheet" href="/styles.css" />
-    <link rel="stylesheet" href="/admin-v3.css?v=20260727-mobile-locations-5" />
+    <link rel="stylesheet" href="/admin-v3.css?v=20260727-mobile-locations-6" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +19,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin="anonymous"
     ></script>
-    <script type="module" src="/admin.js?v=20260727-mobile-locations-5"></script>
+    <script type="module" src="/admin.js?v=20260727-mobile-locations-6"></script>
   </head>
   <body class="admin-v3-body">
     <section id="loginPanel" class="v3-login">
@@ -275,17 +275,17 @@
               <div id="mapComplaintList" class="location-list"></div>
             </div>
           </div>
-          <section class="mobile-map-locations" aria-labelledby="mobileMapLocationsTitle">
+          <section
+            id="mobileMapLocations"
+            class="mobile-map-locations"
+            aria-labelledby="mobileMapLocationsTitle"
+            aria-live="polite"
+          >
             <p class="overline">LOCATIONS</p>
             <h2 id="mobileMapLocationsTitle">
               รายการที่มีพิกัด
               <span id="mobileMapComplaintCount" class="mobile-location-count"></span>
             </h2>
-            <div
-              id="mobileMapComplaintList"
-              class="mobile-location-list"
-              aria-live="polite"
-            ></div>
           </section>
         </section>
 

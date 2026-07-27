@@ -924,21 +924,7 @@ input,select,textarea{
     font-weight:700;
   }
 
-  #mapView:not(.hidden) .mobile-location-list{
-    display:flex!important;
-    position:static;
-    visibility:visible!important;
-    width:100%;
-    height:auto!important;
-    min-height:48px;
-    max-height:none;
-    flex-direction:column;
-    gap:.65rem;
-    overflow:visible;
-    opacity:1!important;
-  }
-
-  #mapView:not(.hidden) .mobile-location-item{
+  #mapView:not(.hidden) .mobile-map-locations>.mobile-location-item{
     display:block!important;
     position:relative!important;
     flex:0 0 auto!important;
@@ -955,14 +941,18 @@ input,select,textarea{
     opacity:1!important;
   }
 
-  #mapView:not(.hidden) .mobile-location-item h3{
+  #mapView:not(.hidden) .mobile-map-locations>.mobile-location-item+.mobile-location-item{
+    margin-top:.65rem!important;
+  }
+
+  #mapView:not(.hidden) .mobile-map-locations>.mobile-location-item h3{
     display:block!important;
     margin:.4rem 0!important;
     color:var(--ink)!important;
     font-size:.95rem!important;
   }
 
-  #mapView:not(.hidden) .mobile-location-item p{
+  #mapView:not(.hidden) .mobile-map-locations>.mobile-location-item p{
     display:block!important;
     margin:.25rem 0!important;
     color:var(--muted)!important;

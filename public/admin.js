@@ -131,14 +131,28 @@ function renderMapCases(){
   const rows=(dashboardCache?.mapCases||[]).filter(c=>Number.isFinite(Number(c.latitude))&&Number.isFinite(Number(c.longitude)));
   const listMarkup=rows.map(c=>`<article class="location-case">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.reference_no)}</p><p>${escapeHtml(c.location_text||'-')}</p><div class="map-case-actions"><button type="button" class="focus-map-case" data-case-id="${escapeHtml(c.reference_no)}">ดูบนแผนที่</button><a target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">เปิด OpenStreetMap →</a></div></article>`).join('')||'<p class="muted">ยังไม่มีรายการที่มีพิกัด</p>';
   $('#mapComplaintList').innerHTML=listMarkup;
-  const mobileList=$('#mobileMapComplaintList');
-  if(mobileList){
-    mobileList.innerHTML=rows.map(c=>`<div class="mobile-location-item">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.reference_no)}</p><p>${escapeHtml(c.location_text||'-')}</p><div class="mobile-location-actions"><button type="button" class="focus-map-case" data-case-id="${escapeHtml(c.reference_no)}">ดูบนแผนที่</button><a target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">เปิด OpenStreetMap →</a></div></div>`).join('')||'<p class="muted">ยังไม่มีรายการที่มีพิกัด</p>';
-    mobileList.style.setProperty('display','flex','important');
-    mobileList.style.setProperty('height','auto','important');
-    mobileList.style.setProperty('min-height',rows.length?'150px':'48px','important');
-    mobileList.style.setProperty('visibility','visible','important');
-    mobileList.style.setProperty('opacity','1','important');
+  const mobileSection=$('#mobileMapLocations');
+  if(mobileSection){
+    mobileSection.querySelectorAll('.mobile-location-item,.mobile-location-empty').forEach(element=>element.remove());
+    const fragment=document.createDocumentFragment();
+    if(rows.length){
+      rows.forEach(c=>{
+        const item=document.createElement('div');
+        item.className='mobile-location-item';
+        item.style.cssText='display:block!important;position:relative!important;width:100%!important;height:auto!important;min-height:142px!important;padding:12px!important;visibility:visible!important;overflow:visible!important;opacity:1!important;';
+        item.innerHTML=`${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.reference_no)}</p><p>${escapeHtml(c.location_text||'-')}</p><div class="mobile-location-actions"><button type="button" class="focus-map-case" data-case-id="${escapeHtml(c.reference_no)}">ดูบนแผนที่</button><a target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">เปิด OpenStreetMap →</a></div>`;
+        fragment.appendChild(item);
+      });
+    }else{
+      const empty=document.createElement('p');
+      empty.className='mobile-location-empty muted';
+      empty.textContent='ยังไม่มีรายการที่มีพิกัด';
+      fragment.appendChild(empty);
+    }
+    mobileSection.appendChild(fragment);
+    mobileSection.style.setProperty('height','auto','important');
+    mobileSection.style.setProperty('min-height',rows.length?'220px':'120px','important');
+    mobileSection.style.setProperty('overflow','visible','important');
   }
   const mobileCount=$('#mobileMapComplaintCount');
   if(mobileCount)mobileCount.textContent=`(${rows.length} รายการ)`;
