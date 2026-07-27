@@ -1464,3 +1464,148 @@ input,select,textarea{
   color:#660066!important;
   font-weight:900;
 }
+
+/* ===== Pastel purple theme ===== */
+:root{
+  --navy:#4F365B;
+  --deep:#6D4C7D;
+  --green:#B58BD3;
+  --mint:#D0B3E6;
+  --gold:#B58BD3;
+  --bg:#FAF6FC;
+  --card:#fff;
+  --ink:#403247;
+  --muted:#817486;
+  --line:#E8DCEF;
+  --shadow:0 18px 50px rgba(109,76,125,.12);
+}
+
+.admin-v3-body,
+.v3-login{
+  background:#FAF6FC;
+}
+
+.overline{
+  color:#87629A;
+}
+
+.login-visual{
+  background:
+    radial-gradient(circle at 80% 20%,rgba(231,212,242,.32),transparent 30%),
+    linear-gradient(145deg,#4F365B,#765486 58%,#B58BD3);
+}
+
+.brand-emblem{
+  color:#fff;
+  background:linear-gradient(145deg,#D4B9E8,#A97DCA);
+}
+
+.v3-sidebar{
+  background:linear-gradient(180deg,#4F365B,#674773 65%,#46304F);
+}
+
+.v3-nav-item.active{
+  color:#fff;
+  background:linear-gradient(90deg,rgba(208,179,230,.34),rgba(255,255,255,.08));
+  box-shadow:inset 3px 0 #DCC6EA;
+}
+
+.v3-primary{
+  color:#fff;
+  background:linear-gradient(135deg,#A97DCA,#C5A4DB);
+  box-shadow:0 10px 20px rgba(109,76,125,.22);
+}
+
+.settings-hero{
+  color:#fff;
+  background:
+    radial-gradient(circle at 85% 15%,rgba(231,212,242,.32),transparent 32%),
+    linear-gradient(135deg,#5E416B,#87629A 65%,#B58BD3);
+  box-shadow:0 18px 50px rgba(109,76,125,.18);
+}
+
+.settings-hero .overline{
+  color:#F0E4F6;
+}
+
+.settings-hero>p{
+  color:#F7F0FA;
+}
+
+.complaint-month-row td,
+.map-month-title,
+#mapView:not(.hidden) .mobile-map-case-row:active,
+#mapView:not(.hidden) .mobile-map-case-row.is-active{
+  border-color:#D4BCE2!important;
+  background:#F7F0FA!important;
+}
+
+.map-month-title{
+  border-left-color:#B58BD3!important;
+}
+
+.map-month-group+.map-month-group,
+#mapView:not(.hidden) .mobile-map-month-group+.mobile-map-month-group{
+  border-top-color:#D4BCE2;
+}
+
+#mapView:not(.hidden) .mobile-map-case-row{
+  border-color:#EADFF0;
+  border-bottom-color:#D4BCE2;
+}
+
+.view-case,
+.governance-edit,
+.location-case .map-case-actions button,
+#mapView:not(.hidden) .mobile-location-actions button{
+  border-color:#B58BD3;
+  color:#fff;
+  background:#B58BD3;
+}
+
+#mapView:not(.hidden) .mobile-map-page-button,
+#mapView:not(.hidden) .mobile-location-actions a,
+.location-case .map-case-actions a{
+  border-color:#B58BD3;
+  color:#765486;
+}
+
+#mapView:not(.hidden) .mobile-map-page-button.is-active,
+.page-btn.active,
+.governance-tab.active{
+  border-color:#B58BD3;
+  color:#fff;
+  background:#B58BD3;
+}
+
+.case-ref,
+#drawerReference,
+.location-case>p:first-of-type,
+.mobile-map-case-reference,
+.smart-map-popup>span{
+  color:#5B3A66!important;
+  font-weight:900;
+}
+
+/* Readable text on pastel-purple surfaces. */
+:root{
+  --ink:#3E2A47;
+}
+
+.brand-emblem,
+.v3-primary,
+.view-case,
+.governance-edit,
+.location-case .map-case-actions button,
+#mapView:not(.hidden) .mobile-location-actions button,
+#mapView:not(.hidden) .mobile-map-page-button.is-active,
+.page-btn.active,
+.governance-tab.active{
+  color:#3E2A47;
+}
+
+.v3-nav-item.active,
+.settings-hero,
+.settings-hero h2{
+  color:#fff;
+}

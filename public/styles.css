@@ -706,3 +706,116 @@ input,select,textarea{
 .success-card strong{
   color:#660066;
 }
+
+/* ===== Pastel purple theme ===== */
+:root{
+  --deep:#6D4C7D;
+  --green:#B58BD3;
+  --mint:#D0B3E6;
+  --gold:#B58BD3;
+  --cream:#FBF7FD;
+  --bg:#FAF6FC;
+  --ink:#403247;
+  --muted:#817486;
+  --line:#E8DCEF;
+  --shadow:0 24px 60px rgba(109,76,125,.12);
+}
+
+.citizen-v3-body{
+  background:
+    radial-gradient(circle at 10% 4%,rgba(181,139,211,.16),transparent 22%),
+    linear-gradient(180deg,#FDFCFE,#F7F1FA);
+}
+
+.citizen-logo,
+.line-dot{
+  color:#fff;
+  background:linear-gradient(145deg,#D4B9E8,#A97DCA);
+}
+
+.citizen-hero{
+  background:
+    radial-gradient(circle at 80% 20%,rgba(231,212,242,.34),transparent 28%),
+    linear-gradient(135deg,#6D4C7D,#9870AD 62%,#C4A1DA);
+  box-shadow:0 35px 80px rgba(109,76,125,.2);
+}
+
+.hero-primary,
+.smart-submit{
+  color:#fff;
+  background:linear-gradient(135deg,#A97DCA,#C5A4DB);
+  box-shadow:0 13px 25px rgba(109,76,125,.2);
+}
+
+.phone-progress i:nth-child(-n+2),
+.success-orbit,
+.trust-grid article>span,
+.section-number,
+.upload-icon,
+.success-check{
+  color:#765486;
+  background:#F0E5F6;
+}
+
+.smart-secondary{
+  color:#765486;
+  border-color:#D8C3E5;
+  background:#F7F0FA;
+}
+
+.file-picker{
+  border-color:#CDB2DD;
+  background:#FCF9FD;
+  color:#765486;
+}
+
+.citizen-v3-body #mapView{
+  background:#F2EAF7;
+}
+
+.timeline-item:not(:last-child)::before{
+  background:#D8C3E5;
+}
+
+.timeline-marker{
+  background:#C7A7DB;
+  box-shadow:0 0 0 2px #D8C3E5;
+}
+
+.timeline-current .timeline-marker{
+  background:#A97DCA;
+  box-shadow:0 0 0 3px rgba(169,125,202,.2);
+}
+
+.timeline-current .timeline-content{
+  border-color:#D4BCE2;
+  background:#F7F0FA;
+}
+
+.card-heading>strong,
+#successReference,
+.success-card strong{
+  color:#5B3A66;
+}
+
+/* Readable text on pastel-purple surfaces. */
+:root{
+  --ink:#3E2A47;
+}
+
+.citizen-logo,
+.line-dot,
+.hero-primary,
+.smart-submit,
+.form-progress .active i{
+  color:#3E2A47;
+}
+
+.smart-secondary{
+  color:#5B3A66;
+}
+
+.tab.active,
+.hero-secondary{
+  color:#fff;
+}
