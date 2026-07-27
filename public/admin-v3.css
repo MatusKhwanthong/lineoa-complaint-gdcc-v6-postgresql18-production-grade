@@ -866,6 +866,20 @@ input,select,textarea{
 
 /* Keep the coordinate list visibly attached below the map on mobile. */
 @media(max-width:900px){
+  body.admin-v3-body #mapView.admin-view:not(.hidden){
+    display:block;
+    position:static;
+    width:100%;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    overflow:visible!important;
+    touch-action:auto;
+  }
+
   #mapView:not(.hidden) .map-command-grid{
     display:flex;
     width:100%;
