@@ -860,6 +860,10 @@ input,select,textarea{
   }
 }
 
+.mobile-map-list-card{
+  display:none;
+}
+
 /* Keep the coordinate list visibly attached below the map on mobile. */
 @media(max-width:900px){
   #mapView:not(.hidden) .map-command-grid{
@@ -885,23 +889,35 @@ input,select,textarea{
   }
 
   #mapView:not(.hidden) .map-list-card{
+    display:none!important;
+  }
+
+  #mapView:not(.hidden) .mobile-map-list-card{
     display:block;
     order:2;
     width:100%;
+    height:auto;
+    min-height:0;
+    max-height:none;
     margin-top:0;
     overflow:visible;
   }
 
-  #mapView:not(.hidden) .map-list-card .v3-card-head h2{
+  #mapView:not(.hidden) .mobile-map-list-card .v3-card-head h2{
     margin-bottom:.65rem;
   }
 
-  #mapView:not(.hidden) .location-list{
+  #mapView:not(.hidden) .mobile-location-list{
     display:grid;
+    position:static;
+    visibility:visible;
+    width:100%;
     height:auto;
+    min-height:0;
     max-height:none;
     gap:.65rem;
     overflow:visible;
+    opacity:1;
   }
 
   #mapView:not(.hidden) .location-case{

@@ -47,9 +47,9 @@ function renderPagination(p){let html='';for(let i=1;i<=p.totalPages;i++){if(p.t
 async function loadImage(id){const r=await fetch(`/api/admin/attachments/${id}`,{headers:{authorization:`Bearer ${token}`}});if(!r.ok)throw new Error('ไม่สามารถโหลดรูปภาพ');return URL.createObjectURL(await r.blob())}
 async function openCase(id){const r=await api(`/api/admin/complaints/${id}`);const c=r.data;$('#drawerReference').textContent=c.reference_no;let images='';for(const a of c.attachments||[]){try{const imageUrl=await loadImage(a.id);images+=`<a href="${imageUrl}" target="_blank"><img src="${imageUrl}" alt="รูปประกอบ"></a>`}catch{}}
 const canManageAssignment=['admin','supervisor','officer'].includes(currentUser?.role);
-const canChangeDepartment=currentUser?.role==='admin';
-const depOptions=['<option value="">ยังไม่มอบหมาย</option>',...departments.map(d=>`<option value="${d.id}" ${d.id===c.department_id?'selected':''}>${escapeHtml(d.name_th)}</option>`)].join('');
-const assignSection=canManageAssignment?`<section class="drawer-section"><h3>การดำเนินงาน</h3><div class="drawer-form"><label>หน่วยงาน<select id="assignDepartment" ${canChangeDepartment?'':'disabled'}>${depOptions}</select>${canChangeDepartment?'':'<small class="muted">เฉพาะ Admin เท่านั้นที่เปลี่ยนหน่วยงานได้</small>'}</label><div class="two"><label>ความสำคัญ<select id="assignPriority"><option value="low">ต่ำ</option><option value="normal">ปกติ</option><option value="high">สูง</option><option value="urgent">เร่งด่วน</option></select></label><label>กำหนดเสร็จ<input id="assignDue" type="datetime-local"></label></div><label>หมายเหตุ<input id="assignNote" placeholder="รายละเอียดการดำเนินงาน"></label><button id="assignButton" class="v3-primary">บันทึกการดำเนินงาน</button></div></section>`:'';
+const canChangeDepartment=['admin','supervisor'].includes(currentUser?.role);
+const depOptions=[...(currentUser?.role==='admin'?['<option value="">ยังไม่มอบหมาย</option>']:[]),...departments.map(d=>`<option value="${d.id}" ${d.id===c.department_id?'selected':''}>${escapeHtml(d.name_th)}</option>`)].join('');
+const assignSection=canManageAssignment?`<section class="drawer-section"><h3>การดำเนินงาน</h3><div class="drawer-form"><label>หน่วยงาน<select id="assignDepartment" ${canChangeDepartment?'':'disabled'}>${depOptions}</select>${canChangeDepartment?'':'<small class="muted">เฉพาะ Admin และ Supervisor เท่านั้นที่เปลี่ยนหน่วยงานได้</small>'}</label><div class="two"><label>ความสำคัญ<select id="assignPriority"><option value="low">ต่ำ</option><option value="normal">ปกติ</option><option value="high">สูง</option><option value="urgent">เร่งด่วน</option></select></label><label>กำหนดเสร็จ<input id="assignDue" type="datetime-local"></label></div><label>หมายเหตุ<input id="assignNote" placeholder="รายละเอียดการดำเนินงาน"></label><button id="assignButton" class="v3-primary">บันทึกการดำเนินงาน</button></div></section>`:'';
 const canEditStatus=Boolean(c.canEditStatus);
 const statusSection=`<section class="drawer-section"><h3>อัปเดตสถานะ</h3>${canEditStatus?`<div class="drawer-form"><select id="newStatus">${Object.entries(statusLabels).map(([v,l])=>`<option value="${v}" ${v===c.status?'selected':''}>${l}</option>`).join('')}</select><input id="statusNote" placeholder="หมายเหตุถึงประชาชน"><button id="statusButton" class="v3-primary">บันทึกสถานะและแจ้ง LINE</button></div>`:'<p class="muted">คุณสามารถแก้ไขสถานะได้เฉพาะเรื่องที่ได้รับมอบหมายเท่านั้น</p>'}</section>`;
 $('#drawerContent').innerHTML=`<div class="drawer-hero">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.category_name)} • ${priorityLabels[c.priority]||c.priority||'ปกติ'}</p></div><div class="drawer-grid"><div class="drawer-field"><span>ผู้ร้องเรียน</span><b>${escapeHtml(c.contact_name)}</b></div><div class="drawer-field"><span>โทรศัพท์</span><b>${escapeHtml(c.contact_phone)}</b></div><div class="drawer-field"><span>หน่วยงาน</span><b>${escapeHtml(c.department_name||'ยังไม่มอบหมาย')}</b></div></div><section class="drawer-section"><h3>รายละเอียดเรื่องร้องเรียน</h3><p>${escapeHtml(c.description)}</p><p><b>สถานที่:</b> ${escapeHtml(c.location_text)}</p>${c.latitude!=null&&c.longitude!=null?`<a class="map-link-button" target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">⌖ เปิดใน OpenStreetMap</a>`:''}</section>${images?`<section class="drawer-section"><h3>รูปภาพประกอบ</h3><div class="drawer-images">${images}</div></section>`:''}${assignSection}${statusSection}<section class="drawer-section"><h3>ประวัติการดำเนินงาน</h3><div class="timeline">${(c.history||[]).map(h=>`<div class="timeline-item"><b>${statusLabels[h.new_status]||h.new_status}</b><p>${escapeHtml(h.note||'-')}</p><small>${fmt(h.created_at)} ${h.staff_name?`• ${escapeHtml(h.staff_name)}`:''}</small></div>`).join('')}</div></section>`;
@@ -64,7 +64,7 @@ async function assignCase(id){
       note:$('#assignNote').value||null,
     };
 
-    if(currentUser?.role==='admin'){
+    if(['admin','supervisor'].includes(currentUser?.role)){
       payload.departmentId=$('#assignDepartment').value||null;
     }
 
@@ -129,7 +129,10 @@ function createMapPopup(c){
 }
 function renderMapCases(){
   const rows=(dashboardCache?.mapCases||[]).filter(c=>Number.isFinite(Number(c.latitude))&&Number.isFinite(Number(c.longitude)));
-  $('#mapComplaintList').innerHTML=rows.map(c=>`<article class="location-case">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.reference_no)}</p><p>${escapeHtml(c.location_text||'-')}</p><div class="map-case-actions"><button type="button" class="focus-map-case" data-case-id="${escapeHtml(c.reference_no)}">ดูบนแผนที่</button><a target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">เปิด OpenStreetMap →</a></div></article>`).join('')||'<p class="muted">ยังไม่มีรายการที่มีพิกัด</p>';
+  const listMarkup=rows.map(c=>`<article class="location-case">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.reference_no)}</p><p>${escapeHtml(c.location_text||'-')}</p><div class="map-case-actions"><button type="button" class="focus-map-case" data-case-id="${escapeHtml(c.reference_no)}">ดูบนแผนที่</button><a target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">เปิด OpenStreetMap →</a></div></article>`).join('')||'<p class="muted">ยังไม่มีรายการที่มีพิกัด</p>';
+  $('#mapComplaintList').innerHTML=listMarkup;
+  const mobileList=$('#mobileMapComplaintList');
+  if(mobileList)mobileList.innerHTML=listMarkup;
   const mapElement=$('#adminComplaintMap');
   try{
     const map=ensureSmartGeoMap();

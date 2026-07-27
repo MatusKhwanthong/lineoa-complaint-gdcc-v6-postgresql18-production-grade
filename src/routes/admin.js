@@ -750,11 +750,38 @@ router.patch(
       if (Object.hasOwn(parsed.data, 'departmentId')) {
         departmentId = parsed.data.departmentId;
       }
+    } else if (req.admin.role === 'supervisor') {
+      if (!isSameDepartmentStaff(req, current.department_id)) {
+        throw new ApiError(
+          403,
+          'Supervisor สามารถแก้ไขได้เฉพาะเรื่องของหน่วยงานตนเอง',
+        );
+      }
+
+      if (Object.hasOwn(parsed.data, 'departmentId')) {
+        if (!parsed.data.departmentId) {
+          throw new ApiError(400, 'Supervisor ต้องเลือกหน่วยงานปลายทาง');
+        }
+
+        const targetDepartment = await pool.query(
+          `SELECT id
+             FROM departments
+            WHERE id = $1
+              AND is_active = true`,
+          [parsed.data.departmentId],
+        );
+
+        if (targetDepartment.rowCount === 0) {
+          throw new ApiError(400, 'ไม่พบหน่วยงานปลายทางหรือหน่วยงานถูกปิดใช้งาน');
+        }
+
+        departmentId = parsed.data.departmentId;
+      }
     } else {
       if (!isSameDepartmentStaff(req, current.department_id)) {
         throw new ApiError(
           403,
-          'Officer และ Supervisor สามารถแก้ไขได้เฉพาะเรื่องของหน่วยงานตนเอง',
+          'Officer สามารถแก้ไขได้เฉพาะเรื่องของหน่วยงานตนเอง',
         );
       }
 
@@ -764,11 +791,9 @@ router.patch(
       ) {
         throw new ApiError(
           403,
-          'เฉพาะ Admin เท่านั้นที่เปลี่ยนหน่วยงานของเรื่องร้องเรียนได้',
+          'Officer ไม่สามารถเปลี่ยนหน่วยงานของเรื่องร้องเรียนได้',
         );
       }
-
-      departmentId = current.department_id;
     }
 
     const result = await pool.query(
