@@ -157,6 +157,27 @@ input,select,textarea{
   }
 }
 
+/* Prevent a single month/case from stretching to fill the map list height. */
+#mapComplaintList.location-list{
+  align-content:start;
+  grid-auto-rows:max-content;
+}
+
+#mapComplaintList .map-month-group,
+#mobileMapCaseList .mobile-map-month-group{
+  align-content:start;
+  grid-auto-rows:max-content;
+  min-height:0;
+}
+
+#mapComplaintList .map-month-title,
+#mobileMapCaseList .map-month-title,
+#mapComplaintList .location-case{
+  align-self:start;
+  height:auto;
+  min-height:0;
+}
+
 @media(max-width:600px){
   .login-visual{
     display:none;
