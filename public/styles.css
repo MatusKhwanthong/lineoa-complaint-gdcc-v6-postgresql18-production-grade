@@ -2,8 +2,8 @@
 
 /* all section map and detail */
 #mapView{
-  width:100%;
-  height:80%;
+  width:80%;
+  height:70%;
   min-height:320px;
   border:1px solid var(--line);
   border-radius:16px;
