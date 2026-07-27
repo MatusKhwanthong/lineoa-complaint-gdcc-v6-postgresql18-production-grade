@@ -925,27 +925,71 @@ input,select,textarea{
   }
 
   #mapView:not(.hidden) .mobile-location-list{
-    display:grid;
+    display:flex!important;
     position:static;
-    align-content:start;
-    visibility:visible;
+    visibility:visible!important;
     width:100%;
-    height:auto;
-    min-height:0;
+    height:auto!important;
+    min-height:48px;
     max-height:none;
+    flex-direction:column;
     gap:.65rem;
     overflow:visible;
-    opacity:1;
+    opacity:1!important;
   }
 
-  #mapView:not(.hidden) .mobile-location-list>.location-case{
-    display:block;
-    position:static;
-    width:100%;
-    height:auto;
-    min-height:0;
-    visibility:visible;
-    opacity:1;
+  #mapView:not(.hidden) .mobile-location-item{
+    display:block!important;
+    position:relative!important;
+    flex:0 0 auto!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:142px!important;
+    padding:.8rem!important;
+    border:1px solid var(--line)!important;
+    border-radius:13px!important;
+    background:#fff!important;
+    color:var(--ink)!important;
+    visibility:visible!important;
+    overflow:visible!important;
+    opacity:1!important;
+  }
+
+  #mapView:not(.hidden) .mobile-location-item h3{
+    display:block!important;
+    margin:.4rem 0!important;
+    color:var(--ink)!important;
+    font-size:.95rem!important;
+  }
+
+  #mapView:not(.hidden) .mobile-location-item p{
+    display:block!important;
+    margin:.25rem 0!important;
+    color:var(--muted)!important;
+    font-size:.8rem!important;
+  }
+
+  #mapView:not(.hidden) .mobile-location-actions{
+    display:flex!important;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:.55rem;
+    margin-top:.6rem;
+  }
+
+  #mapView:not(.hidden) .mobile-location-actions button,
+  #mapView:not(.hidden) .mobile-location-actions a{
+    display:inline-flex!important;
+    min-height:44px;
+    align-items:center;
+    justify-content:center;
+    padding:.6rem .75rem;
+    border:1px solid #0b8d7d;
+    border-radius:10px;
+    background:#fff;
+    color:var(--green);
+    font-weight:900;
+    text-decoration:none;
   }
 }
 

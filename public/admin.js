@@ -132,7 +132,14 @@ function renderMapCases(){
   const listMarkup=rows.map(c=>`<article class="location-case">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.reference_no)}</p><p>${escapeHtml(c.location_text||'-')}</p><div class="map-case-actions"><button type="button" class="focus-map-case" data-case-id="${escapeHtml(c.reference_no)}">ดูบนแผนที่</button><a target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">เปิด OpenStreetMap →</a></div></article>`).join('')||'<p class="muted">ยังไม่มีรายการที่มีพิกัด</p>';
   $('#mapComplaintList').innerHTML=listMarkup;
   const mobileList=$('#mobileMapComplaintList');
-  if(mobileList)mobileList.innerHTML=listMarkup;
+  if(mobileList){
+    mobileList.innerHTML=rows.map(c=>`<div class="mobile-location-item">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.reference_no)}</p><p>${escapeHtml(c.location_text||'-')}</p><div class="mobile-location-actions"><button type="button" class="focus-map-case" data-case-id="${escapeHtml(c.reference_no)}">ดูบนแผนที่</button><a target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">เปิด OpenStreetMap →</a></div></div>`).join('')||'<p class="muted">ยังไม่มีรายการที่มีพิกัด</p>';
+    mobileList.style.setProperty('display','flex','important');
+    mobileList.style.setProperty('height','auto','important');
+    mobileList.style.setProperty('min-height',rows.length?'150px':'48px','important');
+    mobileList.style.setProperty('visibility','visible','important');
+    mobileList.style.setProperty('opacity','1','important');
+  }
   const mobileCount=$('#mobileMapComplaintCount');
   if(mobileCount)mobileCount.textContent=`(${rows.length} รายการ)`;
   const mapElement=$('#adminComplaintMap');
