@@ -55,11 +55,11 @@ async function writeAudit(req, action, entityType, entityId = null, detail = {})
 }
 
 const allowedTransitions = {
-  new: ['received', 'in_progress', 'rejected', 'cancelled'],
-  received: ['assigned', 'in_progress', 'waiting_for_info', 'rejected', 'cancelled'],
-  assigned: ['in_progress', 'waiting_for_info', 'completed', 'cancelled'],
-  in_progress: ['waiting_for_info', 'completed', 'cancelled'],
-  waiting_for_info: ['received', 'assigned', 'in_progress', 'cancelled'],
+  new: ['received', 'in_progress'],
+  received: ['assigned', 'in_progress'],
+  assigned: ['in_progress', 'completed'],
+  in_progress: ['completed'],
+  waiting_for_info: ['received', 'assigned', 'in_progress', 'completed'],
   completed: [],
   rejected: [],
   cancelled: [],
@@ -510,7 +510,8 @@ router.post(
       const updateResult = await client.query(
         `UPDATE complaints
             SET status = CASE
-                  WHEN status = 'new' THEN 'received'::complaint_status
+                  WHEN status NOT IN ('completed', 'rejected', 'cancelled')
+                    THEN 'in_progress'::complaint_status
                   ELSE status
                 END,
                 updated_at = current_timestamp
@@ -560,19 +561,25 @@ router.post(
       {
         imageCount: storedImages.length,
         note: noteResult.data || null,
+        oldStatus: selectedComplaint.status,
+        newStatus: updatedComplaint.status,
       },
     );
 
     if (selectedComplaint.status !== updatedComplaint.status) {
       await notifyStatusChanged(
         updatedComplaint,
-        noteResult.data || 'เจ้าหน้าที่รับเรื่องและแนบรูปการดำเนินงานแล้ว',
+        noteResult.data ||
+          'เจ้าหน้าที่เริ่มดำเนินการและแนบรูปผลการดำเนินงานแล้ว',
       );
     }
 
     res.status(201).json({
       success: true,
-      message: 'บันทึกรูปผลการดำเนินงานเรียบร้อย',
+      message:
+        selectedComplaint.status !== updatedComplaint.status
+          ? 'บันทึกรูปและเปลี่ยนสถานะเป็นกำลังดำเนินการเรียบร้อย'
+          : 'บันทึกรูปผลการดำเนินงานเรียบร้อย',
       data: {
         imageCount: storedImages.length,
         status: updatedComplaint.status,
@@ -887,7 +894,22 @@ router.get('/dashboard', async (req, res) => {
         c.longitude,
         c.location_text,
         c.created_at,
-        cc.name_th AS category_name
+        cc.name_th AS category_name,
+        COALESCE(
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', a.id,
+                'originalName', a.original_name
+              )
+              ORDER BY a.sort_order, a.created_at
+            )
+            FROM complaint_attachments a
+            WHERE a.complaint_id = c.id
+              AND a.attachment_source = 'citizen'
+          ),
+          '[]'::json
+        ) AS citizen_attachments
       FROM complaints c
       JOIN complaint_categories cc ON cc.id = c.category_id
       WHERE c.latitude IS NOT NULL

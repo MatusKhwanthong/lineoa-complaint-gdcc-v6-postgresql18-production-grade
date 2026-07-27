@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#083f3a" />
     <title>Smart City Complaint Command Center</title>
     <link rel="stylesheet" href="/styles.css?v=20260727-image-viewer-1" />
-    <link rel="stylesheet" href="/admin-v3.css?v=20260727-map-single-case-1" />
+    <link rel="stylesheet" href="/admin-v3.css?v=20260727-smartmap-citizen-photo-1" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +19,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin="anonymous"
     ></script>
-    <script type="module" src="/admin.js?v=20260727-image-viewer-1"></script>
+    <script type="module" src="/admin.js?v=20260727-smartmap-citizen-photo-1"></script>
   </head>
   <body class="admin-v3-body">
     <section id="loginPanel" class="v3-login">
@@ -241,10 +241,7 @@
                 <option value="received">รับเรื่องแล้ว</option>
                 <option value="assigned">มอบหมายแล้ว</option>
                 <option value="in_progress">กำลังดำเนินการ</option>
-                <option value="waiting_for_info">รอข้อมูลเพิ่มเติม</option>
                 <option value="completed">เสร็จสิ้น</option>
-                <option value="rejected">ไม่รับดำเนินการ</option>
-                <option value="cancelled">ยกเลิก</option>
               </select>
               <select id="complaintMonthFilter" aria-label="เลือกเดือนของเรื่องร้องเรียน">
                 <option value="">ทุกเดือน</option>
@@ -432,6 +429,7 @@
         </section>
       </main>
 
+      <div id="detailDrawerBackdrop" class="v3-drawer-backdrop hidden" aria-hidden="true"></div>
       <aside id="detailDrawer" class="v3-drawer hidden">
         <div class="drawer-top">
           <div>

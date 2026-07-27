@@ -38,7 +38,14 @@ function setupImageViewer() {
   const close = () => dialog.close();
   $('#imageViewerClose').addEventListener('click', close);
   dialog.addEventListener('click', (event) => {
-    if (event.target === dialog) close();
+    if (event.target !== dialog) return;
+    const rect = dialog.getBoundingClientRect();
+    const outside =
+      event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom;
+    if (outside || event.target === dialog) close();
   });
   dialog.addEventListener('close', () => {
     $('#imageViewerImage').removeAttribute('src');

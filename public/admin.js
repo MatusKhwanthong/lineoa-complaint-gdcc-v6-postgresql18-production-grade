@@ -1,7 +1,9 @@
 ﻿const statusLabels={new:'รับเรื่องใหม่',received:'รับเรื่องแล้ว',assigned:'มอบหมายแล้ว',in_progress:'กำลังดำเนินการ',waiting_for_info:'รอข้อมูลเพิ่มเติม',completed:'เสร็จสิ้น',rejected:'ไม่รับดำเนินการ',cancelled:'ยกเลิก'};
 const statusColors={new:'#e7a61b',received:'#3f79db',assigned:'#568ce8',in_progress:'#8d59d7',waiting_for_info:'#b170d7',completed:'#19a676',rejected:'#db5555',cancelled:'#8a9692'};
+const selectableStatusValues=['new','received','assigned','in_progress','completed'];
 const priorityLabels={low:'ต่ำ',normal:'ปกติ',high:'สูง',urgent:'เร่งด่วน'};
 const $=s=>document.querySelector(s);let token=sessionStorage.getItem('adminToken');let currentPage=1;let departments=[];let staff=[];let dashboardCache=null;let currentUser=null;let executiveDepartmentId='';let governanceMode='categories';let governanceEditing=null;let smartGeoMap=null;let smartGeoMarkers=null;let smartGeoMarkerById=new Map();let smartGeoResizeTimer=null;let selectedMapMonth='all';let mobileMapPage=1;const mobileMapPageSize=4;
+const mapCitizenPhotoUrls=new Map();
 function show(id,msg,type='error'){const e=$(id);e.textContent=msg;e.className=`alert ${type}`;e.classList.remove('hidden')}
 function clear(id){const e=$(id);e.className='alert hidden';e.textContent=''}
 async function api(path,opt={}){const h=new Headers(opt.headers||{});if(!(opt.body instanceof FormData))h.set('content-type','application/json');if(token)h.set('authorization',`Bearer ${token}`);const r=await fetch(path,{...opt,headers:h});const j=await r.json().catch(()=>({}));if(r.status===401&&path!='/api/admin/login')logout();if(!r.ok)throw new Error(j.message||`เกิดข้อผิดพลาด ${r.status}`);return j}
@@ -10,6 +12,8 @@ function badge(s){return `<span class="v3-badge status-${s}">${statusLabels[s]||
 function priorityBadge(priority='normal'){const value=priorityLabels[priority]?priority:'normal';return `<span class="v3-priority priority-${value}">${priorityLabels[value]}</span>`}
 function openStreetMapUrl(lat,lng){const latitude=Number(lat).toFixed(6);const longitude=Number(lng).toFixed(6);return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(latitude)}&mlon=${encodeURIComponent(longitude)}#map=18/${encodeURIComponent(latitude)}/${encodeURIComponent(longitude)}`}
 function openAdminImageViewer(src,caption='รูปภาพประกอบ'){const dialog=$('#adminImageViewer');const image=$('#adminImageViewerImage');image.src=src;image.alt=caption;$('#adminImageViewerCaption').textContent=caption;if(!dialog.open)dialog.showModal()}
+function closeDetailDrawer(){$('#detailDrawer').classList.add('hidden');$('#detailDrawerBackdrop').classList.add('hidden')}
+function isDialogBackdropClick(event,dialog){if(event.target!==dialog)return false;const rect=dialog.getBoundingClientRect();return event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom||event.target===dialog}
 function loginView(){$('#loginPanel').classList.remove('hidden');$('#appShell').classList.add('hidden')}
 function isExecutive(){return ['executive','exclusive'].includes(currentUser?.role)}
 function addExecutiveDepartmentScope(params){if(isExecutive()&&executiveDepartmentId)params.set('departmentId',executiveDepartmentId);return params}
@@ -122,7 +126,7 @@ async function openCase(id){
   const depOptions=[...(currentUser?.role==='admin'?['<option value="">ยังไม่มอบหมาย</option>']:[]),...departments.map(d=>`<option value="${d.id}" ${d.id===c.department_id?'selected':''}>${escapeHtml(d.name_th)}</option>`)].join('');
   const assignSection=canManageAssignment?`<section class="drawer-section"><h3>การดำเนินงาน</h3><div class="drawer-form"><label>หน่วยงาน<select id="assignDepartment" ${canChangeDepartment?'':'disabled'}>${depOptions}</select>${canChangeDepartment?'':'<small class="muted">เฉพาะ Admin และ Supervisor เท่านั้นที่เปลี่ยนหน่วยงานได้</small>'}</label><div class="two"><label>ความสำคัญ<select id="assignPriority"><option value="low">ต่ำ</option><option value="normal">ปกติ</option><option value="high">สูง</option><option value="urgent">เร่งด่วน</option></select></label><label>กำหนดเสร็จ<input id="assignDue" type="datetime-local"></label></div><label>หมายเหตุ<input id="assignNote" placeholder="รายละเอียดการดำเนินงาน"></label><button id="assignButton" class="v3-primary">บันทึกการดำเนินงาน</button></div></section>`:'';
   const workImageSection=`<section class="drawer-section"><h3>รูปภาพผลการดำเนินงาน</h3>${staffImages?`<div class="drawer-images">${staffImages}</div>`:'<p class="muted">ยังไม่มีรูปผลการดำเนินงานจากเจ้าหน้าที่</p>'}${canEditStatus?`<div class="drawer-form work-image-form"><div id="workImageAlert" class="alert hidden"></div><label>แนบรูปจากการปฏิบัติงาน<input id="workImages" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple><small class="muted">รองรับ JPEG, PNG, WebP, HEIC และ HEIF ขนาดไม่เกิน 10 MB ต่อภาพ</small></label><label>หมายเหตุ<input id="workImageNote" maxlength="500" placeholder="เช่น ดำเนินการซ่อมแซมเรียบร้อย"></label><button id="uploadWorkImagesButton" class="v3-primary" type="button">อัปโหลดรูปการดำเนินงาน</button></div>`:''}</section>`;
-  const statusSection=`<section class="drawer-section"><h3>อัปเดตสถานะ</h3>${canEditStatus?`<div class="drawer-form"><select id="newStatus">${Object.entries(statusLabels).map(([v,l])=>`<option value="${v}" ${v===c.status?'selected':''}>${l}</option>`).join('')}</select><input id="statusNote" placeholder="หมายเหตุถึงประชาชน"><button id="statusButton" class="v3-primary">บันทึกสถานะและแจ้ง LINE</button></div>`:'<p class="muted">คุณสามารถแก้ไขสถานะได้เฉพาะเรื่องที่ได้รับมอบหมายเท่านั้น</p>'}</section>`;
+  const statusSection=`<section class="drawer-section"><h3>อัปเดตสถานะ</h3>${canEditStatus?`<div class="drawer-form"><select id="newStatus">${selectableStatusValues.map(v=>`<option value="${v}" ${v===c.status?'selected':''}>${statusLabels[v]}</option>`).join('')}</select><input id="statusNote" placeholder="หมายเหตุถึงประชาชน"><button id="statusButton" class="v3-primary">บันทึกสถานะและแจ้ง LINE</button></div>`:'<p class="muted">คุณสามารถแก้ไขสถานะได้เฉพาะเรื่องที่ได้รับมอบหมายเท่านั้น</p>'}</section>`;
   $('#drawerContent').innerHTML=`<div class="drawer-hero">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.category_name)} • ${priorityLabels[c.priority]||c.priority||'ปกติ'}</p></div><div class="drawer-grid"><div class="drawer-field"><span>ผู้ร้องเรียน</span><b>${escapeHtml(c.contact_name)}</b></div><div class="drawer-field"><span>โทรศัพท์</span><b>${escapeHtml(c.contact_phone)}</b></div><div class="drawer-field"><span>หน่วยงาน</span><b>${escapeHtml(c.department_name||'ยังไม่มอบหมาย')}</b></div></div><section class="drawer-section"><h3>รายละเอียดเรื่องร้องเรียน</h3><p>${escapeHtml(c.description)}</p><p><b>สถานที่:</b> ${escapeHtml(c.location_text)}</p>${c.latitude!=null&&c.longitude!=null?`<a class="map-link-button" target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">⌖ เปิดใน OpenStreetMap</a>`:''}</section>${citizenImages?`<section class="drawer-section"><h3>รูปภาพจากผู้แจ้ง</h3><div class="drawer-images">${citizenImages}</div></section>`:''}${workImageSection}${assignSection}${statusSection}<section class="drawer-section"><h3>ประวัติการดำเนินงาน</h3><div class="timeline">${(c.history||[]).map(h=>`<div class="timeline-item"><b>${statusLabels[h.new_status]||h.new_status}</b><p>${escapeHtml(h.note||'-')}</p><small>${fmt(h.created_at)} ${h.staff_name?`• ${escapeHtml(h.staff_name)}`:''}</small></div>`).join('')}</div></section>`;
   if(canManageAssignment){$('#assignPriority').value=c.priority||'normal';if(c.due_at)$('#assignDue').value=new Date(c.due_at).toISOString().slice(0,16);$('#assignButton').onclick=()=>assignCase(c.id)}
   if(canEditStatus){
@@ -130,6 +134,7 @@ async function openCase(id){
     $('#uploadWorkImagesButton').onclick=()=>uploadWorkImages(c.id);
   }
   $('#detailDrawer').classList.remove('hidden');
+  $('#detailDrawerBackdrop').classList.remove('hidden');
   document.querySelectorAll('.admin-image-thumbnail').forEach(button=>button.onclick=()=>openAdminImageViewer(button.dataset.imageUrl,button.dataset.imageCaption));
 }
 async function uploadWorkImages(id){
@@ -204,13 +209,13 @@ async function assignCase(id){
         : 'บันทึกการดำเนินงานเรียบร้อย',
       'success',
     );
-    $('#detailDrawer').classList.add('hidden');
+    closeDetailDrawer();
     await boot();
   }catch(e){
     show('#pageAlert',e.message);
   }
 }
-async function updateStatus(id){try{await api(`/api/admin/complaints/${id}/status`,{method:'PATCH',body:JSON.stringify({status:$('#newStatus').value,note:$('#statusNote').value})});show('#pageAlert','อัปเดตสถานะและส่งแจ้งเตือนเรียบร้อย','success');$('#detailDrawer').classList.add('hidden');await boot()}catch(e){show('#pageAlert',e.message)}}
+async function updateStatus(id){try{await api(`/api/admin/complaints/${id}/status`,{method:'PATCH',body:JSON.stringify({status:$('#newStatus').value,note:$('#statusNote').value})});show('#pageAlert','อัปเดตสถานะและส่งแจ้งเตือนเรียบร้อย','success');closeDetailDrawer();await boot()}catch(e){show('#pageAlert',e.message)}}
 function ensureSmartGeoMap(){
   if(smartGeoMap)return smartGeoMap;
   const mapElement=$('#adminComplaintMap');
@@ -248,8 +253,37 @@ function createMapPopup(c){
   link.target='_blank';
   link.rel='noopener';
   link.textContent='เปิดใน OpenStreetMap →';
-  popup.append(title,reference,location,link);
+  popup.append(title,reference,location);
+  const firstAttachment=c.citizen_attachments?.[0];
+  if(firstAttachment){
+    const photoButton=document.createElement('button');
+    photoButton.type='button';
+    photoButton.className='map-popup-citizen-photo';
+    photoButton.dataset.mapPhotoId=firstAttachment.id;
+    photoButton.dataset.mapPhotoCaption=firstAttachment.originalName||`รูปจากผู้แจ้ง ${c.reference_no}`;
+    photoButton.innerHTML=`<span>กำลังโหลดรูปจากผู้แจ้ง…</span>`;
+    popup.append(photoButton);
+  }
+  popup.append(link);
   return popup;
+}
+async function loadMapPopupPhoto(popup){
+  const button=popup.querySelector('.map-popup-citizen-photo');
+  if(!button||button.dataset.loaded==='true')return;
+  try{
+    const id=button.dataset.mapPhotoId;
+    let imageUrl=mapCitizenPhotoUrls.get(id);
+    if(!imageUrl){
+      imageUrl=await loadImage(id);
+      mapCitizenPhotoUrls.set(id,imageUrl);
+    }
+    button.innerHTML=`<img src="${imageUrl}" alt="${escapeHtml(button.dataset.mapPhotoCaption||'รูปจากผู้แจ้ง')}"><span>แตะเพื่อขยายรูป</span>`;
+    button.dataset.loaded='true';
+    button.onclick=event=>{event.stopPropagation();openAdminImageViewer(imageUrl,button.dataset.mapPhotoCaption||'รูปจากผู้แจ้ง')};
+  }catch(error){
+    button.innerHTML=`<span class="image-load-error">โหลดรูปไม่สำเร็จ: ${escapeHtml(error.message)}</span>`;
+    button.disabled=true;
+  }
 }
 function mapCaseMonthKey(value){
   const date=new Date(value);
@@ -326,7 +360,8 @@ function renderMapCases(){
         fillColor:statusColors[c.status]||'#d84c4c',
         fillOpacity:1,
       }).addTo(smartGeoMarkers);
-      marker.bindPopup(createMapPopup(c),{
+      const popupContent=createMapPopup(c);
+      marker.bindPopup(popupContent,{
         maxWidth:260,
         minWidth:190,
         autoPan:true,
@@ -334,6 +369,7 @@ function renderMapCases(){
         autoPanPaddingTopLeft:[24,24],
         autoPanPaddingBottomRight:[24,24],
       });
+      marker.on('popupopen',()=>loadMapPopupPhoto(popupContent));
       smartGeoMarkerById.set(String(c.reference_no),marker);
       bounds.push(point);
     });
@@ -443,5 +479,5 @@ function closeGovernanceDialog(){
 }
 
 $('#loginForm').onsubmit=async e=>{e.preventDefault();clear('#adminAlert');try{const r=await api('/api/admin/login',{method:'POST',body:JSON.stringify({username:$('#username').value,password:$('#password').value})});token=r.data.token;sessionStorage.setItem('adminToken',token);appView(r.data.user);await boot()}catch(err){show('#adminAlert',err.message)}};
-const adminImageViewer=$('#adminImageViewer');$('#adminImageViewerClose').onclick=()=>adminImageViewer.close();adminImageViewer.addEventListener('click',event=>{if(event.target===adminImageViewer)adminImageViewer.close()});adminImageViewer.addEventListener('close',()=>$('#adminImageViewerImage').removeAttribute('src'));
-$('#logoutButton').onclick=logout;$('#mobileLogoutButton').onclick=logout;$('#closeDrawer').onclick=()=>$('#detailDrawer').classList.add('hidden');$('#governanceCancelButton').onclick=closeGovernanceDialog;$('#governanceCloseButton').onclick=closeGovernanceDialog;$('#governanceDialog').addEventListener('cancel',e=>{e.preventDefault();closeGovernanceDialog()});$('#governanceDialog').addEventListener('click',e=>{if(e.target===$('#governanceDialog'))closeGovernanceDialog()});$('#searchButton').onclick=()=>loadComplaints(1);$('#statusFilter').onchange=()=>loadComplaints(1);$('#complaintMonthFilter').onchange=()=>loadComplaints(1);$('#searchInput').onkeydown=e=>{if(e.key==='Enter')loadComplaints(1)};$('#refreshAll').onclick=async()=>{try{await refreshScopedData()}catch(err){show('#pageAlert',err.message)}};$('#executiveDepartmentFilter').onchange=async e=>{executiveDepartmentId=e.target.value;try{await refreshScopedData()}catch(err){show('#pageAlert',err.message)}};document.querySelectorAll('.v3-nav-item').forEach(b=>b.onclick=()=>switchView(b.dataset.view));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>switchView(b.dataset.go));document.querySelectorAll('.governance-tab').forEach(b=>b.onclick=()=>loadGovernance(b.dataset.governance));$('#addCategoryButton').onclick=()=>{if(currentUser?.role==='admin')openGovernanceDialog('category')};$('#addDepartmentButton').onclick=()=>{if(currentUser?.role==='admin')openGovernanceDialog('department')};$('#addUserButton').onclick=()=>{if(currentUser?.role==='admin')openGovernanceDialog('user')};$('#refreshAuditButton').onclick=()=>loadGovernance('audit');$('#governanceForm').onsubmit=async e=>{e.preventDefault();try{await saveGovernance()}catch(err){show('#pageAlert',err.message)}};$('#exportCsvButton').onclick=async()=>{try{await exportCsv()}catch(err){show('#pageAlert',err.message)}};loadMe();
+const adminImageViewer=$('#adminImageViewer');$('#adminImageViewerClose').onclick=()=>adminImageViewer.close();adminImageViewer.addEventListener('click',event=>{if(isDialogBackdropClick(event,adminImageViewer))adminImageViewer.close()});adminImageViewer.addEventListener('close',()=>$('#adminImageViewerImage').removeAttribute('src'));
+$('#logoutButton').onclick=logout;$('#mobileLogoutButton').onclick=logout;$('#closeDrawer').onclick=closeDetailDrawer;$('#detailDrawerBackdrop').onclick=closeDetailDrawer;$('#governanceCancelButton').onclick=closeGovernanceDialog;$('#governanceCloseButton').onclick=closeGovernanceDialog;$('#governanceDialog').addEventListener('cancel',e=>{e.preventDefault();closeGovernanceDialog()});$('#governanceDialog').addEventListener('click',e=>{if(isDialogBackdropClick(e,$('#governanceDialog')))closeGovernanceDialog()});$('#searchButton').onclick=()=>loadComplaints(1);$('#statusFilter').onchange=()=>loadComplaints(1);$('#complaintMonthFilter').onchange=()=>loadComplaints(1);$('#searchInput').onkeydown=e=>{if(e.key==='Enter')loadComplaints(1)};$('#refreshAll').onclick=async()=>{try{await refreshScopedData()}catch(err){show('#pageAlert',err.message)}};$('#executiveDepartmentFilter').onchange=async e=>{executiveDepartmentId=e.target.value;try{await refreshScopedData()}catch(err){show('#pageAlert',err.message)}};document.querySelectorAll('.v3-nav-item').forEach(b=>b.onclick=()=>switchView(b.dataset.view));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>switchView(b.dataset.go));document.querySelectorAll('.governance-tab').forEach(b=>b.onclick=()=>loadGovernance(b.dataset.governance));$('#addCategoryButton').onclick=()=>{if(currentUser?.role==='admin')openGovernanceDialog('category')};$('#addDepartmentButton').onclick=()=>{if(currentUser?.role==='admin')openGovernanceDialog('department')};$('#addUserButton').onclick=()=>{if(currentUser?.role==='admin')openGovernanceDialog('user')};$('#refreshAuditButton').onclick=()=>loadGovernance('audit');$('#governanceForm').onsubmit=async e=>{e.preventDefault();try{await saveGovernance()}catch(err){show('#pageAlert',err.message)}};$('#exportCsvButton').onclick=async()=>{try{await exportCsv()}catch(err){show('#pageAlert',err.message)}};loadMe();

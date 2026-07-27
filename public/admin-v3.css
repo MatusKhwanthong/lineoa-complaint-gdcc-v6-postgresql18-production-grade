@@ -157,6 +157,20 @@ input,select,textarea{
   }
 }
 
+.v3-drawer-backdrop{
+  position:fixed;
+  z-index:49;
+  inset:0;
+  background:rgba(34,19,39,.55);
+  backdrop-filter:blur(3px);
+}
+
+@media(max-width:600px){
+  .v3-drawer{
+    width:calc(100% - 18px);
+  }
+}
+
 /* Prevent a single month/case from stretching to fill the map list height. */
 #mapComplaintList.location-list{
   align-content:start;
@@ -176,6 +190,12 @@ input,select,textarea{
   align-self:start;
   height:auto;
   min-height:0;
+}
+
+@media(max-width:600px){
+  .admin-v3-body .v3-drawer{
+    width:calc(100% - 18px);
+  }
 }
 
 @media(max-width:600px){
@@ -1672,4 +1692,42 @@ input,select,textarea{
     flex:1 1 100%;
     min-width:0;
   }
+}
+
+@media(max-width:600px){
+  .admin-v3-body .v3-drawer{
+    width:calc(100% - 18px);
+  }
+}
+.smart-map-popup .map-popup-citizen-photo {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  width: 100%;
+  margin: 0.55rem 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f7f0fa;
+  color: #5b3a66;
+  cursor: pointer;
+  text-align: left;
+}
+
+.smart-map-popup .map-popup-citizen-photo img {
+  display: block;
+  width: 100%;
+  max-height: 150px;
+  object-fit: cover;
+}
+
+.smart-map-popup .map-popup-citizen-photo > span {
+  display: block;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.smart-map-popup .map-popup-citizen-photo:disabled {
+  cursor: default;
 }

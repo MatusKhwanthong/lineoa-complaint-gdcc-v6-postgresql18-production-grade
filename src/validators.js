@@ -69,10 +69,7 @@ export const statusUpdateSchema = z.object({
     'received',
     'assigned',
     'in_progress',
-    'waiting_for_info',
     'completed',
-    'rejected',
-    'cancelled',
   ]),
   note: optionalText(2000),
 });
