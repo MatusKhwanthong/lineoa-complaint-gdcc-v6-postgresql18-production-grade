@@ -1331,3 +1331,109 @@ input,select,textarea{
 .settings-hero>p{
   color:#f3e5f4;
 }
+
+/* ===== Primary brand color: #FF00FF ===== */
+:root{
+  --navy:#3D003D;
+  --deep:#660066;
+  --green:#FF00FF;
+  --mint:#FF66FF;
+  --gold:#FF00FF;
+  --bg:#FFF5FF;
+  --card:#fff;
+  --ink:#330033;
+  --muted:#806080;
+  --line:#F0C8F0;
+  --shadow:0 18px 50px rgba(153,0,153,.12);
+}
+
+.admin-v3-body,
+.v3-login{
+  background:#FFF5FF;
+}
+
+.overline{
+  color:#CC00CC;
+}
+
+.login-visual{
+  background:
+    radial-gradient(circle at 80% 20%,rgba(255,153,255,.28),transparent 30%),
+    linear-gradient(145deg,#3D003D,#990099 58%,#FF00FF);
+}
+
+.brand-emblem{
+  color:#330033;
+  background:linear-gradient(145deg,#FF66FF,#FF00FF);
+}
+
+.v3-sidebar{
+  background:linear-gradient(180deg,#3D003D,#660066 65%,#330033);
+}
+
+.v3-nav-item.active{
+  color:#fff;
+  background:linear-gradient(90deg,rgba(255,0,255,.34),rgba(255,255,255,.08));
+  box-shadow:inset 3px 0 #FF66FF;
+}
+
+.v3-primary{
+  color:#330033;
+  background:linear-gradient(135deg,#FF00FF,#FF66FF);
+  box-shadow:0 10px 20px rgba(153,0,153,.24);
+}
+
+.settings-hero{
+  color:#fff;
+  background:
+    radial-gradient(circle at 85% 15%,rgba(255,153,255,.28),transparent 32%),
+    linear-gradient(135deg,#4D004D,#990099 65%,#FF00FF);
+  box-shadow:0 18px 50px rgba(153,0,153,.2);
+}
+
+.settings-hero .overline{
+  color:#FFD6FF;
+}
+
+.settings-hero>p{
+  color:#FFE8FF;
+}
+
+.complaint-month-row td,
+.map-month-title,
+#mapView:not(.hidden) .mobile-map-case-row:active,
+#mapView:not(.hidden) .mobile-map-case-row.is-active{
+  border-color:#F0A8F0!important;
+  background:#FFF0FF!important;
+}
+
+.map-month-title{
+  border-left-color:#FF00FF!important;
+}
+
+.map-month-group+.map-month-group,
+#mapView:not(.hidden) .mobile-map-month-group+.mobile-map-month-group{
+  border-top-color:#F0A8F0;
+}
+
+#mapView:not(.hidden) .mobile-map-case-row{
+  border-color:#F3D6F3;
+  border-bottom-color:#F0A8F0;
+}
+
+#mapView:not(.hidden) .mobile-map-page-button,
+#mapView:not(.hidden) .mobile-location-actions button,
+#mapView:not(.hidden) .mobile-location-actions a,
+.location-case .map-case-actions button,
+.location-case .map-case-actions a{
+  border-color:#FF00FF;
+  color:#990099;
+}
+
+#mapView:not(.hidden) .mobile-map-page-button.is-active,
+.page-btn.active,
+.governance-tab.active{
+  border-color:#FF00FF;
+  color:#330033;
+  background:#FF00FF;
+}

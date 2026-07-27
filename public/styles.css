@@ -604,3 +604,92 @@ input,select,textarea{
   border-color:#d3afd6;
   background:#f5ebf6;
 }
+
+/* ===== Primary brand color: #FF00FF ===== */
+:root{
+  --deep:#660066;
+  --green:#FF00FF;
+  --mint:#FF66FF;
+  --gold:#FF00FF;
+  --cream:#FFF5FF;
+  --bg:#FFF7FF;
+  --ink:#330033;
+  --muted:#806080;
+  --line:#F0C8F0;
+  --shadow:0 24px 60px rgba(153,0,153,.12);
+}
+
+.citizen-v3-body{
+  background:
+    radial-gradient(circle at 10% 4%,rgba(255,0,255,.12),transparent 22%),
+    linear-gradient(180deg,#FFFBFF,#FFF3FF);
+}
+
+.citizen-logo,
+.line-dot{
+  color:#330033;
+  background:linear-gradient(145deg,#FF66FF,#FF00FF);
+}
+
+.citizen-hero{
+  background:
+    radial-gradient(circle at 80% 20%,rgba(255,153,255,.3),transparent 28%),
+    linear-gradient(135deg,#4D004D,#990099 62%,#FF00FF);
+  box-shadow:0 35px 80px rgba(153,0,153,.22);
+}
+
+.hero-primary,
+.smart-submit{
+  color:#330033;
+  background:linear-gradient(135deg,#FF00FF,#FF66FF);
+  box-shadow:0 13px 25px rgba(153,0,153,.24);
+}
+
+.phone-progress i:nth-child(-n+2),
+.success-orbit,
+.trust-grid article>span,
+.section-number,
+.upload-icon,
+.success-check{
+  color:#990099;
+  background:#FFE0FF;
+}
+
+.smart-secondary{
+  color:#990099;
+  border-color:#F0A8F0;
+  background:#FFF0FF;
+}
+
+.file-picker{
+  border-color:#E88FE8;
+  background:#FFF7FF;
+  color:#990099;
+}
+
+.citizen-v3-body #mapView{
+  background:#FFEFFF;
+}
+
+.timeline-item:not(:last-child)::before{
+  background:#F0A8F0;
+}
+
+.timeline-marker{
+  background:#FF99FF;
+  box-shadow:0 0 0 2px #F0A8F0;
+}
+
+.timeline-current .timeline-marker{
+  background:#FF00FF;
+  box-shadow:0 0 0 3px rgba(255,0,255,.2);
+}
+
+.timeline-current .timeline-content{
+  border-color:#F0A8F0;
+  background:#FFF0FF;
+}
+
+.container>.panel h2{
+  color:#990099;
+}
