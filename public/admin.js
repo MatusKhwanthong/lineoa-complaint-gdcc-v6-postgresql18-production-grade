@@ -156,9 +156,17 @@ function renderMapCases(){
       smartGeoMarkerById.set(String(c.reference_no),marker);
       bounds.push(point);
     });
-    if(bounds.length===1)map.setView(bounds[0],16);
-    else if(bounds.length>1)map.fitBounds(bounds,{padding:[36,36],maxZoom:16});
-    else map.setView([9.1382,99.3217],11);
+    const fitMapToMarkers=()=>{
+      if(bounds.length===1)map.setView(bounds[0],16,{animate:false});
+      else if(bounds.length>1)map.fitBounds(bounds,{
+        paddingTopLeft:[56,72],
+        paddingBottomRight:[56,56],
+        maxZoom:16,
+        animate:false,
+      });
+      else map.setView([9.1382,99.3217],11,{animate:false});
+    };
+    fitMapToMarkers();
     document.querySelectorAll('.focus-map-case').forEach(button=>{
       button.onclick=()=>{
         const marker=smartGeoMarkerById.get(button.dataset.caseId);
@@ -167,7 +175,10 @@ function renderMapCases(){
         marker.openPopup();
       };
     });
-    window.setTimeout(()=>map.invalidateSize(true),0);
+    window.setTimeout(()=>{
+      map.invalidateSize({pan:false,debounceMoveend:true});
+      fitMapToMarkers();
+    },180);
   }catch(error){
     if(mapElement){
       mapElement.classList.add('map-load-error');

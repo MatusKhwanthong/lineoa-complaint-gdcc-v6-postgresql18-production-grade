@@ -729,3 +729,133 @@ input,select,textarea{
     max-height:360px;
   }
 }
+
+/* Keep the desktop sidebar attached to the viewport while content scrolls. */
+@media(min-width:901px){
+  .v3-shell{
+    display:block;
+    min-height:100vh;
+    min-height:100dvh;
+  }
+
+  .v3-sidebar{
+    position:fixed;
+    z-index:40;
+    inset:0 auto 0 0;
+    width:244px;
+    height:100vh;
+    height:100dvh;
+    overflow-x:hidden;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(255,255,255,.28) transparent;
+  }
+
+  .v3-sidebar::-webkit-scrollbar{
+    width:5px;
+  }
+
+  .v3-sidebar::-webkit-scrollbar-thumb{
+    border-radius:999px;
+    background:rgba(255,255,255,.28);
+  }
+
+  .v3-main{
+    width:calc(100% - 244px);
+    min-height:100vh;
+    min-height:100dvh;
+    margin-left:244px;
+  }
+}
+
+@media(min-width:901px) and (max-width:1250px){
+  .v3-sidebar{
+    width:210px;
+  }
+
+  .v3-main{
+    width:calc(100% - 210px);
+    margin-left:210px;
+  }
+}
+
+/* Compact Smart Map layout for Android and iOS. */
+@media(max-width:900px){
+  .map-view-active .v3-header{
+    margin-bottom:.65rem;
+  }
+
+  .map-view-active .v3-header>div:first-child{
+    display:none;
+  }
+
+  .map-view-active .v3-header-actions{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 48px auto;
+    width:100%;
+    margin-top:0;
+    gap:.55rem;
+  }
+
+  .map-view-active .date-pill{
+    min-height:48px;
+    padding:.6rem .75rem;
+  }
+
+  .map-view-active .map-panel-card,
+  .map-view-active .map-list-card{
+    padding:.75rem;
+  }
+
+  .map-view-active .map-panel-card .v3-card-head h2{
+    margin-bottom:.35rem;
+  }
+
+  .map-view-active .map-panel-card .v3-card-head p:last-child{
+    margin:.25rem 0 .7rem;
+    font-size:.86rem;
+    line-height:1.45;
+  }
+
+  .map-view-active #adminComplaintMap.smart-map-stage{
+    height:400px;
+    height:min(48svh,400px);
+    min-height:300px;
+    max-height:400px;
+  }
+
+  .map-view-active .map-list-card{
+    margin-top:.7rem;
+  }
+
+  .v3-nav{
+    scroll-snap-type:x proximity;
+  }
+
+  .v3-nav-item{
+    scroll-snap-align:center;
+  }
+}
+
+@media(max-width:430px){
+  .map-view-active .v3-header-actions{
+    grid-template-columns:minmax(0,1fr) 46px auto;
+  }
+
+  .map-view-active .date-pill{
+    font-size:.78rem;
+  }
+
+  .map-view-active #adminComplaintMap.smart-map-stage{
+    height:360px;
+    height:min(44svh,360px);
+    min-height:280px;
+    max-height:360px;
+  }
+
+  .map-view-active #adminComplaintMap .leaflet-control-attribution{
+    max-width:72%;
+    font-size:.58rem;
+  }
+}
