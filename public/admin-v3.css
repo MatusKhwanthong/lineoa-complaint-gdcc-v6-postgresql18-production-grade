@@ -860,6 +860,98 @@ input,select,textarea{
   }
 }
 
+/* ===== Municipality purple theme ===== */
+:root{
+  --navy:#35103b;
+  --deep:#4b1553;
+  --green:#78227f;
+  --mint:#a64ca8;
+  --gold:#78227f;
+  --bg:#f4eff6;
+  --card:#fff;
+  --ink:#321638;
+  --muted:#7d6a80;
+  --line:#e8dbea;
+  --shadow:0 18px 50px rgba(91,28,99,.1);
+}
+
+.admin-v3-body,
+.v3-login{
+  background:#f4eff6;
+}
+
+.overline{
+  color:#78227f;
+}
+
+.login-visual{
+  background:
+    radial-gradient(circle at 80% 20%,rgba(218,164,221,.25),transparent 30%),
+    linear-gradient(145deg,#35103b,#641a6c 55%,#8d3294);
+}
+
+.brand-emblem{
+  color:#fff;
+  background:linear-gradient(145deg,#a64ca8,#641a6c);
+}
+
+.v3-sidebar{
+  background:linear-gradient(180deg,#35103b,#52165a 65%,#2f0d35);
+}
+
+.v3-nav-item.active{
+  color:#fff;
+  background:linear-gradient(90deg,rgba(190,105,194,.34),rgba(255,255,255,.08));
+  box-shadow:inset 3px 0 #d69bd9;
+}
+
+.v3-primary{
+  color:#fff;
+  background:linear-gradient(135deg,#681c70,#9a3da0);
+  box-shadow:0 10px 20px rgba(91,28,99,.22);
+}
+
+.search-box:focus-within,
+.drawer-form input:focus,
+.drawer-form select:focus,
+.drawer-form textarea:focus{
+  border-color:#a64ca8;
+  box-shadow:0 0 0 4px rgba(166,76,168,.12);
+}
+
+.map-month-title,
+.complaint-month-row td,
+#mapView:not(.hidden) .mobile-map-case-row:active,
+#mapView:not(.hidden) .mobile-map-case-row.is-active{
+  border-color:#cda8d0!important;
+  background:#f3e7f4!important;
+}
+
+.map-month-title{
+  border-left-color:#a64ca8!important;
+}
+
+#mapView:not(.hidden) .mobile-map-page-button,
+#mapView:not(.hidden) .mobile-location-actions button,
+#mapView:not(.hidden) .mobile-location-actions a,
+.location-case .map-case-actions button,
+.location-case .map-case-actions a{
+  border-color:#8d3294;
+  color:#78227f;
+}
+
+#mapView:not(.hidden) .mobile-map-page-button.is-active,
+.page-btn.active{
+  border-color:#78227f;
+  color:#fff;
+  background:#78227f;
+}
+
+.map-month-group+.map-month-group,
+#mapView:not(.hidden) .mobile-map-month-group+.mobile-map-month-group{
+  border-top-color:#cda8d0;
+}
+
 .map-month-filter{
   display:grid;
   min-width:180px;
@@ -1176,4 +1268,46 @@ input,select,textarea{
     min-height:220px;
     max-height:270px;
   }
+}
+
+/* Keep late-loaded map and monthly-list rules inside the purple palette. */
+.complaint-month-row td{
+  border-top-color:#cda8d0!important;
+  border-bottom-color:#dbc5de!important;
+  background:#f3e7f4!important;
+}
+
+.map-month-title{
+  border-left-color:#a64ca8!important;
+  background:#f3e7f4!important;
+}
+
+.map-month-group+.map-month-group,
+#mapView:not(.hidden) .mobile-map-month-group+.mobile-map-month-group{
+  border-top-color:#cda8d0;
+}
+
+#mapView:not(.hidden) .mobile-map-case-row{
+  border-color:#e2d2e4;
+  border-bottom-color:#cda8d0;
+}
+
+#mapView:not(.hidden) .mobile-map-case-row:active,
+#mapView:not(.hidden) .mobile-map-case-row.is-active{
+  border-color:#a64ca8;
+  background:#f3e7f4;
+  box-shadow:0 0 0 3px rgba(166,76,168,.14);
+}
+
+#mapView:not(.hidden) .mobile-map-page-button,
+#mapView:not(.hidden) .mobile-location-actions button,
+#mapView:not(.hidden) .mobile-location-actions a{
+  border-color:#8d3294;
+  color:#78227f;
+}
+
+#mapView:not(.hidden) .mobile-map-page-button.is-active{
+  border-color:#78227f;
+  color:#fff;
+  background:#78227f;
 }

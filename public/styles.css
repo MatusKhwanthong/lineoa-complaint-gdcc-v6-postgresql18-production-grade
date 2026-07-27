@@ -259,6 +259,132 @@ input,select,textarea{
   }
 }
 
+/* ===== Municipality purple theme ===== */
+:root{
+  --deep:#4b1553;
+  --green:#78227f;
+  --mint:#a64ca8;
+  --gold:#78227f;
+  --cream:#f8f2f9;
+  --bg:#f6f1f7;
+  --ink:#321638;
+  --muted:#7d6a80;
+  --line:#e8dbea;
+  --shadow:0 24px 60px rgba(91,28,99,.1);
+}
+
+.citizen-v3-body{
+  background:
+    radial-gradient(circle at 10% 4%,rgba(166,76,168,.12),transparent 22%),
+    linear-gradient(180deg,#fbf9fc,#f3edf5);
+}
+
+.citizen-header{
+  border-bottom-color:rgba(75,21,83,.1);
+}
+
+.citizen-logo,
+.line-dot{
+  color:#fff;
+  background:linear-gradient(145deg,#a64ca8,#641a6c);
+}
+
+.citizen-hero{
+  background:
+    radial-gradient(circle at 80% 20%,rgba(218,164,221,.24),transparent 28%),
+    linear-gradient(135deg,#411047,#74207c 60%,#a64ca8);
+  box-shadow:0 35px 80px rgba(75,21,83,.2);
+}
+
+.hero-copy .overline,
+.hero-copy h1 span{
+  color:#eed6f0;
+}
+
+.hero-primary,
+.smart-submit{
+  color:#fff;
+  background:linear-gradient(135deg,#6a1b72,#9a3da0);
+  box-shadow:0 13px 25px rgba(75,21,83,.22);
+}
+
+.phone-progress i:nth-child(-n+2),
+.success-orbit{
+  color:#78227f;
+  background:#ead8ec;
+}
+
+.trust-grid article>span,
+.section-number,
+.upload-icon,
+.success-check{
+  color:#78227f;
+  background:#f0e1f2;
+}
+
+.smart-secondary{
+  color:#78227f;
+  border-color:#d9c3dc;
+  background:#f5ebf6;
+}
+
+.file-picker{
+  border-color:#c99bcd;
+  background:#faf5fb;
+  color:#78227f;
+}
+
+.citizen-tabs{
+  border-color:#e8dbea;
+}
+
+.map-panel,
+.citizen-panel,
+.form-section{
+  border-color:#e8dbea;
+}
+
+.citizen-v3-body #mapView{
+  background:#f1e7f3;
+}
+
+.success-card strong{
+  color:#4b1553;
+  background:#f3e8f4;
+}
+
+.citizen-footer,
+.topbar{
+  color:#fff;
+  background:#4b1553;
+}
+
+.topbar{
+  padding:1rem max(1rem,calc((100vw - 960px)/2));
+}
+
+.topbar h1{
+  margin:0;
+  font-size:1.35rem;
+}
+
+.container{
+  width:min(960px,calc(100% - 2rem));
+  margin:1.5rem auto;
+}
+
+.container>.panel{
+  padding:clamp(1rem,3vw,2rem);
+  border:1px solid #e8dbea;
+  border-radius:22px;
+  background:#fff;
+  box-shadow:var(--shadow);
+}
+
+.container>.panel h2{
+  color:#78227f;
+}
+
 @media(max-width:360px){
   .citizen-brand strong{
     font-size:.84rem;
@@ -453,4 +579,28 @@ input,select,textarea{
     display:block;
     margin-top:.2rem;
   }
+}
+
+/* Keep late-loaded timeline rules inside the purple palette. */
+.timeline-item:not(:last-child)::before{
+  background:#d9c3dc;
+}
+
+.timeline-marker{
+  background:#b47ab8;
+  box-shadow:0 0 0 2px #d9c3dc;
+}
+
+.timeline-current .timeline-marker{
+  background:#a64ca8;
+  box-shadow:0 0 0 3px rgba(166,76,168,.2);
+}
+
+.timeline-content{
+  background:#fcf9fc;
+}
+
+.timeline-current .timeline-content{
+  border-color:#d3afd6;
+  background:#f5ebf6;
 }
