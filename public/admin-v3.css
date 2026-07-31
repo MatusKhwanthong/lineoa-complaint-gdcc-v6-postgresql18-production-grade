@@ -1842,6 +1842,15 @@ button[aria-disabled="true"],
   font-weight:900;
 }
 
+.logout-confirm-icon svg{
+  width:30px;
+  height:30px;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
 .logout-confirm-panel h2{
   margin:0;
   color:#4B1553;
