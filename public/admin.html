@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#083f3a" />
     <title>Smart City Complaint Command Center</title>
     <link rel="stylesheet" href="/styles.css?v=20260727-image-viewer-1" />
-    <link rel="stylesheet" href="/admin-v3.css?v=20260731-button-feedback-1" />
+    <link rel="stylesheet" href="/admin-v3.css?v=20260731-logout-popup-1" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +19,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin="anonymous"
     ></script>
-    <script type="module" src="/admin.js?v=20260731-logout-confirm-1"></script>
+    <script type="module" src="/admin.js?v=20260731-logout-popup-1"></script>
   </head>
   <body class="admin-v3-body">
     <section id="loginPanel" class="v3-login">
@@ -466,6 +466,28 @@
           </button>
         </div>
       </form>
+    </dialog>
+    <dialog
+      id="logoutConfirmDialog"
+      class="logout-confirm-dialog"
+      aria-labelledby="logoutConfirmTitle"
+      aria-describedby="logoutConfirmDescription"
+    >
+      <div class="logout-confirm-panel">
+        <div class="logout-confirm-icon" aria-hidden="true">↪</div>
+        <h2 id="logoutConfirmTitle">ยืนยันการออกจากระบบ</h2>
+        <p id="logoutConfirmDescription">
+          คุณต้องการออกจากระบบใช่หรือไม่?
+        </p>
+        <div class="logout-confirm-actions">
+          <button id="logoutCancelButton" type="button" class="logout-cancel-button">
+            ยกเลิก
+          </button>
+          <button id="logoutConfirmButton" type="button" class="logout-confirm-button">
+            ออกจากระบบ
+          </button>
+        </div>
+      </div>
     </dialog>
     <dialog id="adminImageViewer" class="image-viewer" aria-labelledby="adminImageViewerTitle">
       <div class="image-viewer-panel">
