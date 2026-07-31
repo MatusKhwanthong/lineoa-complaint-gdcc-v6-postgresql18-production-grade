@@ -1879,6 +1879,10 @@ button[aria-disabled="true"],
   box-shadow:0 10px 20px rgba(169,47,73,.2);
 }
 
+.v3-dashboard-grid.officer-dashboard .department-card{
+  grid-column:1 / -1;
+}
+
 @media(max-width:420px){
   .logout-confirm-actions{
     grid-template-columns:1fr;
