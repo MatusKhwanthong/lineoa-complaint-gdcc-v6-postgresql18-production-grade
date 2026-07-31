@@ -1731,3 +1731,76 @@ input,select,textarea{
 .smart-map-popup .map-popup-citizen-photo:disabled {
   cursor: default;
 }
+
+/* ===== Consistent user interaction feedback ===== */
+button,
+[role="button"],
+a.map-link-button,
+.map-case-actions a,
+.leaflet-control a{
+  cursor:pointer;
+  touch-action:manipulation;
+  transition:
+    transform 120ms ease,
+    filter 120ms ease,
+    box-shadow 160ms ease,
+    opacity 120ms ease;
+}
+
+button:not(:disabled):hover,
+[role="button"]:not([aria-disabled="true"]):hover,
+a.map-link-button:hover,
+.map-case-actions a:hover,
+.leaflet-control a:hover{
+  filter:brightness(1.04);
+  box-shadow:0 8px 18px rgba(109,76,125,.18);
+}
+
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active,
+a.map-link-button:active,
+.map-case-actions a:active,
+.leaflet-control a:active{
+  transform:translateY(1px) scale(.97);
+  filter:brightness(.94);
+  box-shadow:0 3px 8px rgba(109,76,125,.16);
+}
+
+button:focus-visible,
+[role="button"]:focus-visible,
+a.map-link-button:focus-visible,
+.map-case-actions a:focus-visible,
+.leaflet-control a:focus-visible{
+  outline:3px solid rgba(181,139,211,.48);
+  outline-offset:3px;
+}
+
+button:disabled,
+button[aria-disabled="true"],
+[role="button"][aria-disabled="true"]{
+  cursor:not-allowed;
+  opacity:.58;
+  filter:saturate(.65);
+  box-shadow:none;
+}
+
+@media(hover:none){
+  button:not(:disabled):hover,
+  [role="button"]:not([aria-disabled="true"]):hover,
+  a.map-link-button:hover,
+  .map-case-actions a:hover,
+  .leaflet-control a:hover{
+    filter:none;
+    box-shadow:inherit;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  button,
+  [role="button"],
+  a.map-link-button,
+  .map-case-actions a,
+  .leaflet-control a{
+    transition:none;
+  }
+}

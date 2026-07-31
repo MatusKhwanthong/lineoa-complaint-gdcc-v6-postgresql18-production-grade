@@ -23,6 +23,38 @@ const statusLabels = {
 };
 
 const $ = (selector) => document.querySelector(selector);
+const lineReloginStorageKey = 'lineReloginRequestedAt';
+const lineReloginCooldownMs = 60_000;
+
+function getLineLoginRedirectUri() {
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
+function requestLineRelogin() {
+  if (state.devUserId || !window.liff?.login) return false;
+
+  const now = Date.now();
+  const lastRequestedAt = Number(sessionStorage.getItem(lineReloginStorageKey) || 0);
+
+  if (now - lastRequestedAt < lineReloginCooldownMs) return false;
+
+  sessionStorage.setItem(lineReloginStorageKey, String(now));
+  state.idToken = null;
+  state.initialized = false;
+  showAlert('เซสชัน LINE หมดอายุ กำลังเข้าสู่ระบบใหม่…');
+
+  try {
+    if (window.liff.isLoggedIn()) window.liff.logout();
+  } catch (error) {
+    console.warn('LINE logout before re-login failed', error);
+  }
+
+  window.setTimeout(() => {
+    window.liff.login({ redirectUri: getLineLoginRedirectUri() });
+  }, 150);
+
+  return true;
+}
 
 function openImageViewer(src, caption = 'รูปภาพประกอบ') {
   const dialog = $('#imageViewer');
@@ -87,8 +119,23 @@ async function api(path, options = {}) {
       result && typeof result === 'object' && 'message' in result
         ? result.message
         : `เกิดข้อผิดพลาด ${response.status}`;
+
+    if (response.status === 401 && !state.devUserId) {
+      const isRedirecting = requestLineRelogin();
+      throw new Error(
+        isRedirecting
+          ? 'เซสชัน LINE หมดอายุ กำลังเข้าสู่ระบบใหม่…'
+          : `${message} กรุณาปิดหน้านี้แล้วเปิดจาก LINE อีกครั้ง`,
+      );
+    }
+
     throw new Error(message);
   }
+
+  if (state.idToken && path.startsWith('/api/complaints')) {
+    sessionStorage.removeItem(lineReloginStorageKey);
+  }
+
   return result;
 }
 
@@ -140,14 +187,18 @@ async function initializeLiff() {
 
     if (!window.liff.isLoggedIn()) {
       setLineStatus('กำลังเข้าสู่ระบบ LINE…');
-      window.liff.login({
-        redirectUri: `${window.location.origin}${window.location.pathname}`,
-      });
+      window.liff.login({ redirectUri: getLineLoginRedirectUri() });
       return false;
     }
 
     state.idToken = window.liff.getIDToken();
     if (!state.idToken) throw new Error('ID_TOKEN_MISSING_OPENID_SCOPE');
+
+    const decodedToken = window.liff.getDecodedIDToken?.();
+    if (decodedToken?.exp && decodedToken.exp * 1000 <= Date.now() + 30_000) {
+      requestLineRelogin();
+      return false;
+    }
 
     setLineStatus('กำลังโหลดข้อมูลผู้ใช้ LINE…');
     const profile = await window.liff.getProfile();
@@ -421,7 +472,18 @@ async function loadProtectedGallery(container, attachments, urlBuilder, authToke
         headers: { authorization: `Bearer ${authToken}` },
       });
 
+      if (response.status === 401 && !state.devUserId) {
+        const isRedirecting = requestLineRelogin();
+        throw new Error(
+          isRedirecting
+            ? 'เซสชัน LINE หมดอายุ กำลังเข้าสู่ระบบใหม่…'
+            : 'เซสชัน LINE ไม่ถูกต้อง กรุณาปิดหน้านี้แล้วเปิดจาก LINE อีกครั้ง',
+        );
+      }
+
       if (!response.ok) throw new Error('ไม่สามารถอ่านรูปภาพได้');
+
+      sessionStorage.removeItem(lineReloginStorageKey);
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
 
