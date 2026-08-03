@@ -1976,6 +1976,22 @@ button[aria-disabled="true"],
   opacity:.5;
 }
 
+.audit-delete-note{
+  max-width:420px;
+  padding:.55rem .65rem;
+  border-left:4px solid #b58bd3;
+  border-radius:8px;
+  background:#f7f0fa;
+  color:#4f315d;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+  white-space:normal;
+}
+
+.audit-delete-note + .audit-detail{
+  margin-top:.4rem;
+}
+
 .complaint-toolbar{
   grid-template-columns:minmax(260px,1fr) 180px 180px 170px auto;
 }

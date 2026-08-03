@@ -410,10 +410,10 @@ router.delete('/complaints/:id', requireRoles('admin'), async (req, res) => {
   const parsedId = z.string().uuid().safeParse(req.params.id);
   if (!parsedId.success) throw new ApiError(400, 'รหัสเรื่องร้องเรียนไม่ถูกต้อง');
   const parsedBody = z.object({
-    reason: z.string().trim().min(5).max(1000),
+    reason: z.string().trim().min(4).max(100),
   }).safeParse(req.body);
   if (!parsedBody.success) {
-    throw new ApiError(400, 'กรุณาระบุหมายเหตุการลบอย่างน้อย 5 ตัวอักษร');
+    throw new ApiError(400, 'กรุณาระบุหมายเหตุการลบตั้งแต่ 4 ถึง 100 ตัวอักษร');
   }
 
   const client = await pool.connect();
