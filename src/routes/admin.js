@@ -116,6 +116,7 @@ router.post('/login', async (req, res) => {
     data: {
       token,
       user: {
+        id: user.id,
         username: user.username,
         displayName: user.display_name,
         role: user.role,
@@ -1224,10 +1225,13 @@ router.get('/governance/categories', requireRoles('admin','supervisor','executiv
       d.name_th AS department_name,
       cc.sla_hours,
       cc.is_active,
+      count(c.id)::integer AS complaint_count,
       cc.created_at,
       cc.updated_at
     FROM complaint_categories cc
     LEFT JOIN departments d ON d.id = cc.department_id
+    LEFT JOIN complaints c ON c.category_id = cc.id
+    GROUP BY cc.id, d.name_th
     ORDER BY cc.sort_order, cc.name_th
   `);
   res.json({ success: true, data: result.rows });
@@ -1254,6 +1258,56 @@ router.patch('/governance/categories/:id', requireRoles('admin'), async (req, re
   if (!result.rowCount) throw new ApiError(404,'ไม่พบหมวดหมู่');
   await writeAudit(req, 'category.update', 'complaint_category', req.params.id, parsed.data);
   res.json({ success:true, data:result.rows[0] });
+});
+
+router.delete('/governance/categories/:id', requireRoles('admin'), async (req, res) => {
+  const idResult = z.string().uuid().safeParse(req.params.id);
+  if (!idResult.success) throw new ApiError(400, 'รหัสหมวดหมู่ไม่ถูกต้อง');
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const categoryResult = await client.query(
+      `SELECT id, code, name_th
+         FROM complaint_categories
+        WHERE id = $1
+        FOR UPDATE`,
+      [idResult.data],
+    );
+
+    if (!categoryResult.rowCount) throw new ApiError(404, 'ไม่พบหมวดหมู่');
+    const category = categoryResult.rows[0];
+    const usageResult = await client.query(
+      `SELECT count(*)::integer AS complaint_count
+         FROM complaints
+        WHERE category_id = $1`,
+      [idResult.data],
+    );
+    const complaintCount = usageResult.rows[0].complaint_count;
+    if (complaintCount > 0) {
+      throw new ApiError(
+        409,
+        `ไม่สามารถลบหมวดหมู่นี้ได้ เนื่องจากมีเรื่องร้องเรียนใช้งานอยู่ ${complaintCount} เรื่อง กรุณาปิดใช้งานแทน`,
+      );
+    }
+
+    await client.query(`DELETE FROM complaint_categories WHERE id = $1`, [idResult.data]);
+    await writeAudit(
+      req,
+      'category.delete',
+      'complaint_category',
+      idResult.data,
+      { code: category.code, nameTh: category.name_th },
+      client,
+    );
+    await client.query('COMMIT');
+    res.json({ success: true, message: 'ลบหมวดหมู่เรียบร้อย' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 router.get('/governance/departments', requireRoles('admin','supervisor','executive','exclusive'), async (req, res) => {
@@ -1562,6 +1616,74 @@ router.patch('/governance/users/:id', requireRoles('admin'), async (req, res) =>
   );
 
   res.json({ success: true, data: result.rows[0] });
+});
+
+router.delete('/governance/users/:id', requireRoles('admin'), async (req, res) => {
+  const idResult = z.string().uuid().safeParse(req.params.id);
+  if (!idResult.success) throw new ApiError(400, 'รหัสผู้ใช้งานไม่ถูกต้อง');
+  if (idResult.data === req.admin.id) {
+    throw new ApiError(409, 'ไม่สามารถลบบัญชีที่กำลังเข้าสู่ระบบอยู่ได้');
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const userResult = await client.query(
+      `SELECT id, username, display_name, role
+         FROM staff_users
+        WHERE id = $1
+        FOR UPDATE`,
+      [idResult.data],
+    );
+    if (!userResult.rowCount) throw new ApiError(404, 'ไม่พบผู้ใช้งาน');
+
+    const selectedUser = userResult.rows[0];
+    if (selectedUser.role === 'admin') {
+      const adminCountResult = await client.query(
+        `SELECT count(*)::integer AS admin_count
+           FROM staff_users
+          WHERE role = 'admin'
+            AND is_active = true
+            AND id <> $1`,
+        [idResult.data],
+      );
+      if (adminCountResult.rows[0].admin_count === 0) {
+        throw new ApiError(409, 'ไม่สามารถลบ Admin คนสุดท้ายของระบบได้');
+      }
+    }
+
+    try {
+      await client.query(`DELETE FROM staff_users WHERE id = $1`, [idResult.data]);
+    } catch (error) {
+      if (error?.code === '23503') {
+        throw new ApiError(
+          409,
+          'ไม่สามารถลบผู้ใช้งานนี้ได้ เนื่องจากมีประวัติการดำเนินงานหรือข้อมูลอ้างอิง กรุณาระงับบัญชีแทน',
+        );
+      }
+      throw error;
+    }
+
+    await writeAudit(
+      req,
+      'staff.delete',
+      'staff_user',
+      idResult.data,
+      {
+        username: selectedUser.username,
+        displayName: selectedUser.display_name,
+        role: selectedUser.role,
+      },
+      client,
+    );
+    await client.query('COMMIT');
+    res.json({ success: true, message: 'ลบผู้ใช้งานเรียบร้อย' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 router.get('/governance/audit-logs', requireRoles('admin','supervisor','executive','exclusive'), async (req, res) => {

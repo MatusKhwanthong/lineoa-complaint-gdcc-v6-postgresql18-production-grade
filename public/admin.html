@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#083f3a" />
     <title>Smart City Complaint Command Center</title>
     <link rel="stylesheet" href="/styles.css?v=20260727-image-viewer-1" />
-    <link rel="stylesheet" href="/admin-v3.css?v=20260803-delete-reason-1" />
+    <link rel="stylesheet" href="/admin-v3.css?v=20260803-user-delete-1" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +19,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin="anonymous"
     ></script>
-    <script type="module" src="/admin.js?v=20260803-delete-reason-1"></script>
+    <script type="module" src="/admin.js?v=20260803-user-delete-1"></script>
   </head>
   <body class="admin-v3-body">
     <section id="loginPanel" class="v3-login">
@@ -472,6 +472,68 @@
           </button>
         </div>
       </form>
+    </dialog>
+    <dialog
+      id="deleteCategoryDialog"
+      class="logout-confirm-dialog"
+      aria-labelledby="deleteCategoryTitle"
+      aria-describedby="deleteCategoryDescription"
+    >
+      <div class="logout-confirm-panel">
+        <div class="logout-confirm-icon delete-confirm-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M4 7h16"></path>
+            <path d="M9 7V4h6v3"></path>
+            <path d="M7 7l1 13h8l1-13"></path>
+            <path d="M10 11v5M14 11v5"></path>
+          </svg>
+        </div>
+        <h2 id="deleteCategoryTitle">ยืนยันการลบหมวดหมู่</h2>
+        <p id="deleteCategoryDescription">
+          ต้องการลบหมวดหมู่ <strong id="deleteCategoryName">-</strong> ใช่หรือไม่?
+        </p>
+        <p id="deleteCategoryUsageWarning"></p>
+        <div id="deleteCategoryAlert" class="alert hidden"></div>
+        <div class="logout-confirm-actions">
+          <button id="deleteCategoryCancelButton" type="button" class="logout-cancel-button">
+            ยกเลิก
+          </button>
+          <button id="deleteCategoryConfirmButton" type="button" class="logout-confirm-button">
+            ลบหมวดหมู่
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <dialog
+      id="deleteUserDialog"
+      class="logout-confirm-dialog"
+      aria-labelledby="deleteUserTitle"
+      aria-describedby="deleteUserDescription"
+    >
+      <div class="logout-confirm-panel">
+        <div class="logout-confirm-icon delete-confirm-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <circle cx="9" cy="8" r="3.5"></circle>
+            <path d="M3.5 19c.6-3.6 2.4-5.5 5.5-5.5 1.2 0 2.2.3 3.1.9"></path>
+            <path d="M15 15l5 5M20 15l-5 5"></path>
+          </svg>
+        </div>
+        <h2 id="deleteUserTitle">ยืนยันการลบผู้ใช้งาน</h2>
+        <p id="deleteUserDescription">
+          ต้องการลบ <strong id="deleteUserName">-</strong>
+          (<span id="deleteUserUsername">-</span>) ใช่หรือไม่?
+        </p>
+        <p>บัญชีที่มีประวัติการดำเนินงานจะไม่สามารถลบได้ กรุณาระงับบัญชีแทน</p>
+        <div id="deleteUserAlert" class="alert hidden"></div>
+        <div class="logout-confirm-actions">
+          <button id="deleteUserCancelButton" type="button" class="logout-cancel-button">
+            ยกเลิก
+          </button>
+          <button id="deleteUserConfirmButton" type="button" class="logout-confirm-button">
+            ลบผู้ใช้งาน
+          </button>
+        </div>
+      </div>
     </dialog>
     <dialog
       id="logoutConfirmDialog"

@@ -1951,6 +1951,31 @@ button[aria-disabled="true"],
   box-shadow:0 0 0 4px rgba(182,51,77,.12);
 }
 
+.governance-delete{
+  border:1px solid #efb7b7;
+  border-radius:10px;
+  padding:.45rem .65rem;
+  background:#fff4f4;
+  color:#b83232;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.governance-delete:hover{
+  background:#ffe7e7;
+  border-color:#df8585;
+}
+
+.governance-delete:disabled{
+  cursor:not-allowed;
+  opacity:.45;
+}
+
+.logout-confirm-button:disabled{
+  cursor:not-allowed;
+  opacity:.5;
+}
+
 .complaint-toolbar{
   grid-template-columns:minmax(260px,1fr) 180px 180px 170px auto;
 }
