@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#083f3a" />
     <title>Smart City Complaint Command Center</title>
     <link rel="stylesheet" href="/styles.css?v=20260727-image-viewer-1" />
-    <link rel="stylesheet" href="/admin-v3.css?v=20260731-logout-person-icon-1" />
+    <link rel="stylesheet" href="/admin-v3.css?v=20260803-complaint-page-size-1" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +19,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin="anonymous"
     ></script>
-    <script type="module" src="/admin.js?v=20260803-category-department-1"></script>
+    <script type="module" src="/admin.js?v=20260803-complaint-page-size-1"></script>
   </head>
   <body class="admin-v3-body">
     <section id="loginPanel" class="v3-login">
@@ -245,6 +245,12 @@
               </select>
               <select id="complaintMonthFilter" aria-label="เลือกเดือนของเรื่องร้องเรียน">
                 <option value="">ทุกเดือน</option>
+              </select>
+              <select id="complaintPageSize" aria-label="เลือกจำนวนรายการที่แสดงต่อหน้า">
+                <option value="10">แสดง 10 รายการ</option>
+                <option value="20" selected>แสดง 20 รายการ</option>
+                <option value="50">แสดง 50 รายการ</option>
+                <option value="100">แสดง 100 รายการ</option>
               </select>
               <button id="searchButton" class="v3-primary" type="button">
                 ค้นหา

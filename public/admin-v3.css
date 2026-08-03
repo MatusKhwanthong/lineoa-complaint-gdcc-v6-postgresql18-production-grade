@@ -1892,6 +1892,27 @@ button[aria-disabled="true"],
   grid-column:1 / -1;
 }
 
+.complaint-toolbar{
+  grid-template-columns:minmax(260px,1fr) 180px 180px 170px auto;
+}
+
+@media(max-width:1200px){
+  .complaint-toolbar{
+    grid-template-columns:minmax(240px,1fr) repeat(2,minmax(160px,auto));
+  }
+
+  .complaint-toolbar #complaintPageSize,
+  .complaint-toolbar #searchButton{
+    grid-column:auto;
+  }
+}
+
+@media(max-width:900px){
+  .complaint-toolbar{
+    grid-template-columns:1fr;
+  }
+}
+
 @media(max-width:420px){
   .logout-confirm-actions{
     grid-template-columns:1fr;
