@@ -570,6 +570,31 @@ input,select,textarea{
   overflow-wrap:anywhere;
 }
 
+.timeline-attachments{
+  margin-top:.75rem;
+  padding-top:.7rem;
+  border-top:1px solid var(--line);
+}
+
+.timeline-attachments-title{
+  display:block;
+  margin-bottom:.55rem;
+  color:#5B3A66;
+  font-size:.82rem;
+}
+
+.timeline-image-gallery .protected-gallery{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  margin-top:.55rem;
+}
+
+.timeline-image-gallery .image-thumbnail-button img{
+  display:block;
+  width:100%;
+  aspect-ratio:1/1;
+  object-fit:cover;
+}
+
 @media(max-width:600px){
   .timeline-heading{
     display:block;
@@ -578,6 +603,10 @@ input,select,textarea{
   .timeline-heading time{
     display:block;
     margin-top:.2rem;
+  }
+
+  .timeline-image-gallery .protected-gallery{
+    grid-template-columns:repeat(2,minmax(0,1fr));
   }
 }
 

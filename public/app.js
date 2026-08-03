@@ -535,7 +535,38 @@ function createComplaintTimeline(item) {
           },
         ];
 
-  history.forEach((event, index) => {
+  const timelineEvents = history.map((event) => ({ ...event, attachments: [] }));
+  const allAttachments = Array.isArray(item.attachments) ? item.attachments : [];
+  const citizenAttachments = allAttachments.filter(
+    (attachment) => attachment.source !== 'staff',
+  );
+  const staffAttachments = allAttachments.filter(
+    (attachment) => attachment.source === 'staff',
+  );
+
+  if (timelineEvents.length && citizenAttachments.length) {
+    timelineEvents[0].attachments.push(...citizenAttachments);
+  }
+
+  staffAttachments.forEach((attachment) => {
+    const attachmentTime = new Date(attachment.createdAt).getTime();
+    let closestIndex = timelineEvents.length - 1;
+    let closestDifference = Number.POSITIVE_INFINITY;
+
+    timelineEvents.forEach((event, index) => {
+      const eventTime = new Date(event.created_at).getTime();
+      if (!Number.isFinite(attachmentTime) || !Number.isFinite(eventTime)) return;
+      const difference = Math.abs(eventTime - attachmentTime);
+      if (difference < closestDifference) {
+        closestDifference = difference;
+        closestIndex = index;
+      }
+    });
+
+    if (closestIndex >= 0) timelineEvents[closestIndex].attachments.push(attachment);
+  });
+
+  timelineEvents.forEach((event, index) => {
     const entry = document.createElement('div');
     entry.className = 'timeline-item';
     if (index === history.length - 1) entry.classList.add('timeline-current');
@@ -569,6 +600,65 @@ function createComplaintTimeline(item) {
       const note = document.createElement('p');
       note.textContent = event.note.trim();
       content.append(note);
+    }
+
+    if (event.attachments.length) {
+      const citizenImages = event.attachments.filter(
+        (attachment) => attachment.source !== 'staff',
+      );
+      const staffImages = event.attachments.filter(
+        (attachment) => attachment.source === 'staff',
+      );
+
+      for (const [attachments, label, isStaff] of [
+        [citizenImages, 'รูปภาพจากผู้แจ้ง', false],
+        [staffImages, 'รูปภาพผลการดำเนินงาน', true],
+      ]) {
+        if (!attachments.length) continue;
+        const imageSection = document.createElement('section');
+        imageSection.className = 'timeline-attachments';
+
+        const imageHeading = document.createElement('strong');
+        imageHeading.className = 'timeline-attachments-title';
+        imageHeading.textContent = `${label} (${attachments.length})`;
+        imageSection.append(imageHeading);
+
+        if (isStaff) {
+          const staffNames = [
+            ...new Set(attachments.map((attachment) => attachment.staffName).filter(Boolean)),
+          ];
+          const notes = [
+            ...new Set(attachments.map((attachment) => attachment.staffNote).filter(Boolean)),
+          ];
+          if (staffNames.length || notes.length) {
+            const sourceNote = document.createElement('p');
+            sourceNote.className = 'attachment-source-note';
+            sourceNote.textContent = [
+              staffNames.length ? `โดย ${staffNames.join(', ')}` : '',
+              notes.length ? `หมายเหตุ: ${notes.join(' • ')}` : '',
+            ].filter(Boolean).join(' — ');
+            imageSection.append(sourceNote);
+          }
+        }
+
+        const gallery = document.createElement('div');
+        gallery.className = 'timeline-image-gallery';
+        gallery.innerHTML = '<p class="muted">กำลังรอเปิดรายละเอียดเพื่อโหลดรูปภาพ…</p>';
+        gallery.loadImages = async () => {
+          if (gallery.dataset.loaded === 'true') return;
+          gallery.dataset.loaded = 'true';
+          const loaded = await loadProtectedGallery(
+            gallery,
+            attachments,
+            (attachment) =>
+              `/api/complaints/${encodeURIComponent(item.reference_no)}/attachments/${attachment.id}`,
+            state.idToken,
+          );
+          if (!loaded) gallery.dataset.loaded = 'false';
+        };
+        imageSection.append(gallery);
+        content.append(imageSection);
+      }
     }
 
     entry.append(marker, content);
@@ -638,65 +728,6 @@ async function loadComplaints() {
         actions.append(mapLink);
       }
 
-      const galleries = document.createElement('div');
-      galleries.className = 'complaint-galleries';
-      const citizenAttachments = (item.attachments || []).filter(
-        (attachment) => attachment.source !== 'staff',
-      );
-      const staffAttachments = (item.attachments || []).filter(
-        (attachment) => attachment.source === 'staff',
-      );
-
-      const addAttachmentGallery = (attachments, buttonLabel, isStaff = false) => {
-        if (!attachments.length) return;
-        const galleryContainer = document.createElement('div');
-        galleryContainer.className = 'gallery-container hidden';
-        const imageButton = document.createElement('button');
-        imageButton.type = 'button';
-        imageButton.className = 'secondary attachment-view-trigger';
-        imageButton.innerHTML = `<span aria-hidden="true">▣</span> ดู${buttonLabel} <b>${attachments.length}</b>`;
-        imageButton.addEventListener('click', async (event) => {
-          event.stopPropagation();
-          galleryContainer.classList.remove('hidden');
-          if (!galleryContainer.dataset.loaded) {
-            const loaded = await loadProtectedGallery(
-              galleryContainer,
-              attachments,
-              (attachment) =>
-                `/api/complaints/${encodeURIComponent(item.reference_no)}/attachments/${attachment.id}`,
-              state.idToken,
-            );
-            if (!loaded) return;
-            if (isStaff) {
-              const staffNames = [
-                ...new Set(attachments.map((attachment) => attachment.staffName).filter(Boolean)),
-              ];
-              const notes = [
-                ...new Set(attachments.map((attachment) => attachment.staffNote).filter(Boolean)),
-              ];
-              const sourceNote = document.createElement('p');
-              sourceNote.className = 'attachment-source-note';
-              sourceNote.textContent = [
-                'รูปผลการดำเนินงานจากเจ้าหน้าที่',
-                staffNames.length ? `โดย ${staffNames.join(', ')}` : '',
-                notes.length ? `หมายเหตุ: ${notes.join(' • ')}` : '',
-              ]
-                .filter(Boolean)
-                .join(' — ');
-              galleryContainer.prepend(sourceNote);
-            }
-            galleryContainer.dataset.loaded = 'true';
-          }
-          const firstImage = galleryContainer.querySelector('.image-thumbnail-button img');
-          if (firstImage) openImageViewer(firstImage.src, firstImage.alt);
-        });
-        actions.append(imageButton);
-        galleries.append(galleryContainer);
-      };
-
-      addAttachmentGallery(citizenAttachments, 'รูปจากผู้แจ้ง');
-      addAttachmentGallery(staffAttachments, 'รูปการดำเนินงาน', true);
-
       const date = document.createElement('p');
       date.className = 'muted';
       date.textContent = `แจ้งเมื่อ ${formatThaiDate(item.created_at)}`;
@@ -710,7 +741,6 @@ async function loadComplaints() {
         description,
         location,
         actions,
-        galleries,
         timeline,
       );
 
@@ -725,6 +755,11 @@ async function loadComplaints() {
         article.setAttribute('aria-expanded', String(!expanded));
         article.classList.toggle('complaint-card-expanded', !expanded);
         details.classList.toggle('hidden', expanded);
+        if (!expanded) {
+          details.querySelectorAll('.timeline-image-gallery').forEach((gallery) => {
+            void gallery.loadImages?.();
+          });
+        }
         toggleHint.textContent = expanded
           ? 'แตะเพื่อดูรายละเอียดและไทม์ไลน์'
           : 'แตะเพื่อย่อรายละเอียด';
