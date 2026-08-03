@@ -1738,7 +1738,7 @@ router.get('/governance/audit-logs', requireRoles('admin','supervisor','executiv
      FROM audit_logs a
      JOIN complaints c
        ON a.entity_type = 'complaint'
-      AND a.entity_id = c.id
+      AND a.entity_id = c.id::text
      LEFT JOIN staff_users s ON s.id = a.actor_staff_user_id
      WHERE c.department_id = $1
      ORDER BY a.created_at DESC
