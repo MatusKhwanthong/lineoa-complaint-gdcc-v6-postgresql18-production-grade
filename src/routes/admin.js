@@ -1135,24 +1135,42 @@ router.patch(
 
 
 router.get('/governance/categories', requireRoles('admin','supervisor','executive','exclusive'), async (req, res) => {
-  const result = await pool.query(`SELECT id, code, name_th, sla_hours, is_active, created_at, updated_at FROM complaint_categories ORDER BY sort_order, name_th`);
+  const result = await pool.query(`
+    SELECT
+      cc.id,
+      cc.code,
+      cc.name_th,
+      cc.department_id,
+      d.name_th AS department_name,
+      cc.sla_hours,
+      cc.is_active,
+      cc.created_at,
+      cc.updated_at
+    FROM complaint_categories cc
+    LEFT JOIN departments d ON d.id = cc.department_id
+    ORDER BY cc.sort_order, cc.name_th
+  `);
   res.json({ success: true, data: result.rows });
 });
 
 router.post('/governance/categories', requireRoles('admin'), async (req, res) => {
-  const schema = z.object({ code: z.string().trim().min(2).max(50).regex(/^[A-Z0-9_]+$/), nameTh: z.string().trim().min(2).max(200), slaHours: z.coerce.number().int().min(1).max(8760).default(72) });
+  const schema = z.object({ code: z.string().trim().min(2).max(50).regex(/^[A-Z0-9_]+$/), nameTh: z.string().trim().min(2).max(200), departmentId: z.string().uuid(), slaHours: z.coerce.number().int().min(1).max(8760).default(72) });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) throw new ApiError(400, 'ข้อมูลหมวดหมู่ไม่ถูกต้อง', parsed.error.flatten());
-  const result = await pool.query(`INSERT INTO complaint_categories (code,name_th,sla_hours) VALUES ($1,$2,$3) RETURNING *`, [parsed.data.code, parsed.data.nameTh, parsed.data.slaHours]);
+  const department = await pool.query(`SELECT id FROM departments WHERE id=$1 AND is_active=true`, [parsed.data.departmentId]);
+  if (!department.rowCount) throw new ApiError(400, 'ไม่พบหน่วยงานที่เลือกหรือหน่วยงานถูกปิดใช้งาน');
+  const result = await pool.query(`INSERT INTO complaint_categories (code,name_th,department_id,sla_hours) VALUES ($1,$2,$3,$4) RETURNING *`, [parsed.data.code, parsed.data.nameTh, parsed.data.departmentId, parsed.data.slaHours]);
   await writeAudit(req, 'category.create', 'complaint_category', result.rows[0].id, parsed.data);
   res.status(201).json({ success:true, data:result.rows[0] });
 });
 
 router.patch('/governance/categories/:id', requireRoles('admin'), async (req, res) => {
-  const schema = z.object({ nameTh: z.string().trim().min(2).max(200), slaHours: z.coerce.number().int().min(1).max(8760), isActive: z.boolean() });
+  const schema = z.object({ nameTh: z.string().trim().min(2).max(200), departmentId: z.string().uuid(), slaHours: z.coerce.number().int().min(1).max(8760), isActive: z.boolean() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) throw new ApiError(400, 'ข้อมูลหมวดหมู่ไม่ถูกต้อง', parsed.error.flatten());
-  const result = await pool.query(`UPDATE complaint_categories SET name_th=$1,sla_hours=$2,is_active=$3,updated_at=current_timestamp WHERE id=$4 RETURNING *`, [parsed.data.nameTh,parsed.data.slaHours,parsed.data.isActive,req.params.id]);
+  const department = await pool.query(`SELECT id FROM departments WHERE id=$1 AND is_active=true`, [parsed.data.departmentId]);
+  if (!department.rowCount) throw new ApiError(400, 'ไม่พบหน่วยงานที่เลือกหรือหน่วยงานถูกปิดใช้งาน');
+  const result = await pool.query(`UPDATE complaint_categories SET name_th=$1,department_id=$2,sla_hours=$3,is_active=$4,updated_at=current_timestamp WHERE id=$5 RETURNING *`, [parsed.data.nameTh,parsed.data.departmentId,parsed.data.slaHours,parsed.data.isActive,req.params.id]);
   if (!result.rowCount) throw new ApiError(404,'ไม่พบหมวดหมู่');
   await writeAudit(req, 'category.update', 'complaint_category', req.params.id, parsed.data);
   res.json({ success:true, data:result.rows[0] });
