@@ -1888,8 +1888,67 @@ button[aria-disabled="true"],
   box-shadow:0 10px 20px rgba(169,47,73,.2);
 }
 
-.v3-dashboard-grid.officer-dashboard .department-card{
-  grid-column:1 / -1;
+.complaint-danger-zone{
+  border-color:#F0C7CF;
+  background:#FFF8F9;
+}
+
+.complaint-danger-zone h3{
+  color:#A92F49;
+}
+
+.complaint-danger-zone p{
+  color:#876C73;
+}
+
+.delete-complaint-button{
+  width:100%;
+  min-height:46px;
+  padding:.75rem 1rem;
+  border:1px solid #C63B56;
+  border-radius:13px;
+  background:#fff;
+  color:#A92F49;
+  font-weight:900;
+}
+
+.delete-confirm-icon{
+  background:#FCE8EC;
+  color:#B6334D;
+}
+
+#deleteComplaintReference{
+  color:#7B1F32;
+}
+
+.delete-complaint-reason{
+  display:grid;
+  gap:.45rem;
+  margin:0 0 1rem;
+  color:#513B58;
+  text-align:left;
+  font-weight:800;
+}
+
+.delete-complaint-reason b{
+  color:#B6334D;
+}
+
+.delete-complaint-reason textarea{
+  width:100%;
+  min-height:100px;
+  padding:.8rem .9rem;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#FFFBFC;
+  color:var(--ink);
+  resize:vertical;
+}
+
+.delete-complaint-reason textarea:focus{
+  border-color:#B6334D;
+  outline:none;
+  box-shadow:0 0 0 4px rgba(182,51,77,.12);
 }
 
 .complaint-toolbar{

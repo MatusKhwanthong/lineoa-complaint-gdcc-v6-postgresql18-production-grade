@@ -9,6 +9,7 @@ import { requireAdmin, requireRoles } from '../middleware/admin-auth.js';
 import { adminLoginSchema, statusUpdateSchema } from '../validators.js';
 import { notifyStatusChanged } from '../services/notifications.js';
 import {
+  cleanupStoredImageKeys,
   cleanupStoredImages,
   processAndStoreImages,
   sendStoredImage,
@@ -46,8 +47,8 @@ function getRequestedDepartmentId(req) {
 }
 
 
-async function writeAudit(req, action, entityType, entityId = null, detail = {}) {
-  await pool.query(
+async function writeAudit(req, action, entityType, entityId = null, detail = {}, executor = pool) {
+  await executor.query(
     `INSERT INTO audit_logs (actor_staff_user_id, action, entity_type, entity_id, detail, ip_address, user_agent)
      VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)`,
     [req.admin?.id || null, action, entityType, entityId, JSON.stringify(detail), req.ip || null, req.get('user-agent') || null],
@@ -401,6 +402,84 @@ router.get('/complaints/:id', async (req, res) => {
   res.json({
     success: true,
     data: { ...complaint, canEditStatus, history: history.rows },
+  });
+});
+
+router.delete('/complaints/:id', requireRoles('admin'), async (req, res) => {
+  const parsedId = z.string().uuid().safeParse(req.params.id);
+  if (!parsedId.success) throw new ApiError(400, 'รหัสเรื่องร้องเรียนไม่ถูกต้อง');
+  const parsedBody = z.object({
+    reason: z.string().trim().min(5).max(1000),
+  }).safeParse(req.body);
+  if (!parsedBody.success) {
+    throw new ApiError(400, 'กรุณาระบุหมายเหตุการลบอย่างน้อย 5 ตัวอักษร');
+  }
+
+  const client = await pool.connect();
+  let deletedComplaint;
+  let storageKeys = [];
+
+  try {
+    await client.query('BEGIN');
+
+    const complaintResult = await client.query(
+      `SELECT id, reference_no, title, status
+         FROM complaints
+        WHERE id = $1
+        FOR UPDATE`,
+      [parsedId.data],
+    );
+
+    if (!complaintResult.rowCount) {
+      throw new ApiError(404, 'ไม่พบเรื่องร้องเรียน');
+    }
+
+    deletedComplaint = complaintResult.rows[0];
+    const attachmentResult = await client.query(
+      `SELECT storage_key
+         FROM complaint_attachments
+        WHERE complaint_id = $1`,
+      [parsedId.data],
+    );
+    storageKeys = attachmentResult.rows.map((row) => row.storage_key);
+
+    await client.query(`DELETE FROM complaint_reviews WHERE complaint_id = $1`, [parsedId.data]);
+    await client.query(`DELETE FROM complaint_tasks WHERE complaint_id = $1`, [parsedId.data]);
+    await client.query(`DELETE FROM complaint_assignments WHERE complaint_id = $1`, [parsedId.data]);
+    await client.query(`DELETE FROM line_notifications WHERE complaint_id = $1`, [parsedId.data]);
+    await client.query(`DELETE FROM complaint_attachments WHERE complaint_id = $1`, [parsedId.data]);
+    await client.query(`DELETE FROM complaint_status_history WHERE complaint_id = $1`, [parsedId.data]);
+    await client.query(`DELETE FROM complaints WHERE id = $1`, [parsedId.data]);
+
+    await writeAudit(
+      req,
+      'complaint.delete',
+      'complaint',
+      parsedId.data,
+      {
+        referenceNo: deletedComplaint.reference_no,
+        title: deletedComplaint.title,
+        status: deletedComplaint.status,
+        deletionReason: parsedBody.data.reason,
+        deletedAttachmentCount: storageKeys.length,
+      },
+      client,
+    );
+
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  await cleanupStoredImageKeys(storageKeys);
+
+  res.json({
+    success: true,
+    message: 'ลบเรื่องร้องเรียนเรียบร้อย',
+    data: { referenceNo: deletedComplaint.reference_no },
   });
 });
 
@@ -790,6 +869,7 @@ router.get('/dashboard', async (req, res) => {
         ON c.category_id = cc.id
         ${joinScope}
       WHERE cc.is_active = true
+        ${scopeByDepartment ? 'AND cc.department_id = $1' : ''}
       GROUP BY cc.id, cc.name_th, cc.sort_order
       ORDER BY value DESC, cc.sort_order
       LIMIT 8

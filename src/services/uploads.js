@@ -129,6 +129,19 @@ export async function cleanupStoredImages(images = []) {
   );
 }
 
+export async function cleanupStoredImageKeys(storageKeys = []) {
+  const images = storageKeys.flatMap((storageKey) => {
+    try {
+      return [{ absolutePath: resolveStoredImagePath(storageKey) }];
+    } catch (error) {
+      console.error('Unable to resolve stored image for cleanup:', error);
+      return [];
+    }
+  });
+
+  await cleanupStoredImages(images);
+}
+
 export function resolveStoredImagePath(storageKey) {
   if (!/^[0-9a-f-]{36}\.jpg$/i.test(storageKey)) {
     throw new ApiError(404, 'ไม่พบรูปภาพ');

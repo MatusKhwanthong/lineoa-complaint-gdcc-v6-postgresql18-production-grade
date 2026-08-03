@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#083f3a" />
     <title>Smart City Complaint Command Center</title>
     <link rel="stylesheet" href="/styles.css?v=20260727-image-viewer-1" />
-    <link rel="stylesheet" href="/admin-v3.css?v=20260803-complaint-page-size-1" />
+    <link rel="stylesheet" href="/admin-v3.css?v=20260803-delete-reason-1" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +19,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin="anonymous"
     ></script>
-    <script type="module" src="/admin.js?v=20260803-complaint-page-size-1"></script>
+    <script type="module" src="/admin.js?v=20260803-delete-reason-1"></script>
   </head>
   <body class="admin-v3-body">
     <section id="loginPanel" class="v3-login">
@@ -213,7 +213,7 @@
               </div>
               <div id="recentTable"></div>
             </article>
-            <article class="v3-card department-card">
+            <article id="departmentWorkloadCard" class="v3-card department-card">
               <div class="v3-card-head">
                 <div>
                   <p class="overline">WORKLOAD</p>
@@ -496,6 +496,46 @@
           </button>
           <button id="logoutConfirmButton" type="button" class="logout-confirm-button">
             ออกจากระบบ
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <dialog
+      id="deleteComplaintDialog"
+      class="logout-confirm-dialog"
+      aria-labelledby="deleteComplaintTitle"
+      aria-describedby="deleteComplaintDescription"
+    >
+      <div class="logout-confirm-panel">
+        <div class="logout-confirm-icon delete-confirm-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M4 7h16"></path>
+            <path d="M9 7V4h6v3"></path>
+            <path d="M7 7l1 13h8l1-13"></path>
+            <path d="M10 11v5M14 11v5"></path>
+          </svg>
+        </div>
+        <h2 id="deleteComplaintTitle">ยืนยันการลบเรื่องร้องเรียน</h2>
+        <p id="deleteComplaintDescription">
+          เรื่อง <strong id="deleteComplaintReference">-</strong> จะถูกลบถาวร
+          รวมถึงประวัติและรูปภาพทั้งหมด
+        </p>
+        <label class="delete-complaint-reason">
+          <span>หมายเหตุการลบ <b aria-hidden="true">*</b></span>
+          <textarea
+            id="deleteComplaintReason"
+            maxlength="1000"
+            required
+            placeholder="ระบุเหตุผลที่ต้องลบ อย่างน้อย 5 ตัวอักษร"
+          ></textarea>
+        </label>
+        <div id="deleteComplaintAlert" class="alert hidden"></div>
+        <div class="logout-confirm-actions">
+          <button id="deleteComplaintCancelButton" type="button" class="logout-cancel-button">
+            ยกเลิก
+          </button>
+          <button id="deleteComplaintConfirmButton" type="button" class="logout-confirm-button">
+            ลบเรื่องถาวร
           </button>
         </div>
       </div>
