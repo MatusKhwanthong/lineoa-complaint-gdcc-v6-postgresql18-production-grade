@@ -590,9 +590,16 @@ router.post(
       const updateResult = await client.query(
         `UPDATE complaints
             SET status = CASE
+                  WHEN status = 'in_progress'
+                    THEN 'completed'::complaint_status
                   WHEN status NOT IN ('completed', 'rejected', 'cancelled')
                     THEN 'in_progress'::complaint_status
                   ELSE status
+                END,
+                completed_at = CASE
+                  WHEN status = 'in_progress'
+                    THEN COALESCE(completed_at, current_timestamp)
+                  ELSE completed_at
                 END,
                 updated_at = current_timestamp
           WHERE id = $1
@@ -615,7 +622,9 @@ router.post(
           current.status,
           updatedComplaint.status,
           noteResult.data ||
-            `เจ้าหน้าที่แนบรูปผลการดำเนินงาน ${storedImages.length} ภาพ`,
+            (updatedComplaint.status === 'completed' && current.status !== 'completed'
+              ? `เจ้าหน้าที่แนบรูปผลการดำเนินงาน ${storedImages.length} ภาพ และดำเนินงานเสร็จสิ้น`
+              : `เจ้าหน้าที่แนบรูปผลการดำเนินงาน ${storedImages.length} ภาพ`),
           req.admin.id,
         ],
       );
@@ -650,7 +659,9 @@ router.post(
       await notifyStatusChanged(
         updatedComplaint,
         noteResult.data ||
-          'เจ้าหน้าที่เริ่มดำเนินการและแนบรูปผลการดำเนินงานแล้ว',
+          (updatedComplaint.status === 'completed'
+            ? 'เจ้าหน้าที่ดำเนินงานเสร็จสิ้นและแนบรูปผลการดำเนินงานแล้ว'
+            : 'เจ้าหน้าที่เริ่มดำเนินการและแนบรูปผลการดำเนินงานแล้ว'),
       );
     }
 
@@ -658,7 +669,9 @@ router.post(
       success: true,
       message:
         selectedComplaint.status !== updatedComplaint.status
-          ? 'บันทึกรูปและเปลี่ยนสถานะเป็นกำลังดำเนินการเรียบร้อย'
+          ? updatedComplaint.status === 'completed'
+            ? 'บันทึกรูปและเปลี่ยนสถานะเป็นเสร็จสิ้นเรียบร้อย'
+            : 'บันทึกรูปและเปลี่ยนสถานะเป็นกำลังดำเนินการเรียบร้อย'
           : 'บันทึกรูปผลการดำเนินงานเรียบร้อย',
       data: {
         imageCount: storedImages.length,
