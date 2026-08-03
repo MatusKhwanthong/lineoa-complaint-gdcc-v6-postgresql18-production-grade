@@ -1977,7 +1977,8 @@ button[aria-disabled="true"],
 }
 
 .audit-delete-note{
-  max-width:420px;
+  min-width:160px;
+  max-width:280px;
   padding:.55rem .65rem;
   border-left:4px solid #b58bd3;
   border-radius:8px;
@@ -1986,10 +1987,6 @@ button[aria-disabled="true"],
   line-height:1.45;
   overflow-wrap:anywhere;
   white-space:normal;
-}
-
-.audit-delete-note + .audit-detail{
-  margin-top:.4rem;
 }
 
 .complaint-toolbar{
