@@ -34,8 +34,12 @@ function isGlobalReadOnlyRole(role) {
   return ['executive', 'exclusive'].includes(role);
 }
 
+function isSystemAdminRole(role) {
+  return ['admin', 'dev'].includes(role);
+}
+
 function canReadAllDepartments(role) {
-  return role === 'admin' || isGlobalReadOnlyRole(role);
+  return isSystemAdminRole(role) || isGlobalReadOnlyRole(role);
 }
 
 function getRequestedDepartmentId(req) {
@@ -309,7 +313,7 @@ router.get('/complaints', async (req, res) => {
   const rows = result.rows.map((row) => ({
     ...row,
     canEditStatus:
-      req.admin.role === 'admin' ||
+      isSystemAdminRole(req.admin.role) ||
       isSameDepartmentStaff(req, row.department_id),
   }));
 
@@ -397,7 +401,7 @@ router.get('/complaints/:id', async (req, res) => {
 
   const complaint = result.rows[0];
   const canEditStatus =
-    req.admin.role === 'admin' ||
+    isSystemAdminRole(req.admin.role) ||
     isSameDepartmentStaff(req, complaint.department_id);
 
   res.json({
@@ -406,7 +410,7 @@ router.get('/complaints/:id', async (req, res) => {
   });
 });
 
-router.delete('/complaints/:id', requireRoles('admin'), async (req, res) => {
+router.delete('/complaints/:id', requireRoles('admin', 'dev'), async (req, res) => {
   const parsedId = z.string().uuid().safeParse(req.params.id);
   if (!parsedId.success) throw new ApiError(400, 'รหัสเรื่องร้องเรียนไม่ถูกต้อง');
   const parsedBody = z.object({
@@ -512,7 +516,7 @@ router.post(
 
     const selectedComplaint = complaintResult.rows[0];
     if (
-      req.admin.role !== 'admin' &&
+      !isSystemAdminRole(req.admin.role) &&
       !isSameDepartmentStaff(req, selectedComplaint.department_id)
     ) {
       throw new ApiError(
@@ -709,7 +713,7 @@ router.patch('/complaints/:id/status', async (req, res) => {
     const nextStatus = parsed.data.status;
 
     if (
-      req.admin.role !== 'admin' &&
+      !isSystemAdminRole(req.admin.role) &&
       !isSameDepartmentStaff(req, current.department_id)
     ) {
       throw new ApiError(
@@ -1016,6 +1020,45 @@ router.get('/dashboard', async (req, res) => {
     ),
   ]);
 
+  const backendUsage = isSystemAdminRole(req.admin.role)
+    ? (
+        await pool.query(`
+          WITH user_counts AS (
+            SELECT
+              count(*)::integer AS total_users,
+              count(*) FILTER (WHERE is_active = true)::integer AS active_users
+            FROM staff_users
+          ),
+          department_activity AS (
+            SELECT
+              d.name_th AS department_name,
+              count(a.id)::integer AS activity_count,
+              count(DISTINCT a.actor_staff_user_id)::integer AS active_user_count
+            FROM departments d
+            JOIN staff_users su
+              ON su.department_id = d.id
+             AND su.is_active = true
+            JOIN audit_logs a
+              ON a.actor_staff_user_id = su.id
+             AND a.created_at >= current_timestamp - interval '30 days'
+            WHERE d.is_active = true
+            GROUP BY d.id, d.name_th
+            ORDER BY activity_count DESC, active_user_count DESC, d.name_th
+            LIMIT 1
+          )
+          SELECT
+            uc.total_users,
+            uc.active_users,
+            da.department_name,
+            COALESCE(da.activity_count, 0)::integer AS activity_count,
+            COALESCE(da.active_user_count, 0)::integer AS active_user_count,
+            30::integer AS period_days
+          FROM user_counts uc
+          LEFT JOIN department_activity da ON true
+        `)
+      ).rows[0]
+    : null;
+
   res.json({
     success: true,
     data: {
@@ -1027,6 +1070,7 @@ router.get('/dashboard', async (req, res) => {
       monthlyTrend: monthlyTrend.rows,
       urgentCases: urgentCases.rows,
       mapCases: mapCases.rows,
+      ...(backendUsage ? { backendUsage } : {}),
     },
   });
 });
@@ -1038,7 +1082,7 @@ router.get('/departments', async (req, res) => {
   res.json({ success: true, data: result.rows });
 });
 
-router.get('/staff', requireRoles('admin', 'supervisor', 'executive', 'exclusive'), async (req, res) => {
+router.get('/staff', requireRoles('admin', 'dev', 'supervisor', 'executive', 'exclusive'), async (req, res) => {
   const values = [];
   let where = `WHERE su.is_active = true`;
 
@@ -1067,7 +1111,7 @@ router.get('/staff', requireRoles('admin', 'supervisor', 'executive', 'exclusive
 
 router.patch(
   '/complaints/:id/assignment',
-  requireRoles('admin', 'supervisor', 'officer'),
+  requireRoles('admin', 'dev', 'supervisor', 'officer'),
   async (req, res) => {
     const idResult = z.string().uuid().safeParse(req.params.id);
     if (!idResult.success) {
@@ -1104,7 +1148,7 @@ router.patch(
     const current = currentResult.rows[0];
     let departmentId = current.department_id;
 
-    if (req.admin.role === 'admin') {
+    if (isSystemAdminRole(req.admin.role)) {
       if (Object.hasOwn(parsed.data, 'departmentId')) {
         departmentId = parsed.data.departmentId;
       }
@@ -1228,7 +1272,7 @@ router.patch(
 );
 
 
-router.get('/governance/categories', requireRoles('admin','supervisor','executive','exclusive'), async (req, res) => {
+router.get('/governance/categories', requireRoles('admin','dev','supervisor','executive','exclusive'), async (req, res) => {
   const result = await pool.query(`
     SELECT
       cc.id,
@@ -1250,7 +1294,7 @@ router.get('/governance/categories', requireRoles('admin','supervisor','executiv
   res.json({ success: true, data: result.rows });
 });
 
-router.post('/governance/categories', requireRoles('admin'), async (req, res) => {
+router.post('/governance/categories', requireRoles('admin', 'dev'), async (req, res) => {
   const schema = z.object({ code: z.string().trim().min(2).max(50).regex(/^[A-Z0-9_]+$/), nameTh: z.string().trim().min(2).max(200), departmentId: z.string().uuid(), slaHours: z.coerce.number().int().min(1).max(8760).default(72) });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) throw new ApiError(400, 'ข้อมูลหมวดหมู่ไม่ถูกต้อง', parsed.error.flatten());
@@ -1261,7 +1305,7 @@ router.post('/governance/categories', requireRoles('admin'), async (req, res) =>
   res.status(201).json({ success:true, data:result.rows[0] });
 });
 
-router.patch('/governance/categories/:id', requireRoles('admin'), async (req, res) => {
+router.patch('/governance/categories/:id', requireRoles('admin', 'dev'), async (req, res) => {
   const schema = z.object({ nameTh: z.string().trim().min(2).max(200), departmentId: z.string().uuid(), slaHours: z.coerce.number().int().min(1).max(8760), isActive: z.boolean() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) throw new ApiError(400, 'ข้อมูลหมวดหมู่ไม่ถูกต้อง', parsed.error.flatten());
@@ -1273,7 +1317,7 @@ router.patch('/governance/categories/:id', requireRoles('admin'), async (req, re
   res.json({ success:true, data:result.rows[0] });
 });
 
-router.delete('/governance/categories/:id', requireRoles('admin'), async (req, res) => {
+router.delete('/governance/categories/:id', requireRoles('admin', 'dev'), async (req, res) => {
   const idResult = z.string().uuid().safeParse(req.params.id);
   if (!idResult.success) throw new ApiError(400, 'รหัสหมวดหมู่ไม่ถูกต้อง');
 
@@ -1323,12 +1367,12 @@ router.delete('/governance/categories/:id', requireRoles('admin'), async (req, r
   }
 });
 
-router.get('/governance/departments', requireRoles('admin','supervisor','executive','exclusive'), async (req, res) => {
+router.get('/governance/departments', requireRoles('admin','dev','supervisor','executive','exclusive'), async (req, res) => {
   const result = await pool.query(`SELECT id, code, name_th, is_active, created_at, updated_at FROM departments ORDER BY name_th`);
   res.json({ success:true, data:result.rows });
 });
 
-router.post('/governance/departments', requireRoles('admin'), async (req, res) => {
+router.post('/governance/departments', requireRoles('admin', 'dev'), async (req, res) => {
   const schema=z.object({code:z.string().trim().min(2).max(50).regex(/^[A-Z0-9_]+$/),nameTh:z.string().trim().min(2).max(200)});
   const parsed=schema.safeParse(req.body); if(!parsed.success) throw new ApiError(400,'ข้อมูลหน่วยงานไม่ถูกต้อง',parsed.error.flatten());
   const result=await pool.query(`INSERT INTO departments (code,name_th) VALUES ($1,$2) RETURNING *`,[parsed.data.code,parsed.data.nameTh]);
@@ -1336,7 +1380,7 @@ router.post('/governance/departments', requireRoles('admin'), async (req, res) =
   res.status(201).json({success:true,data:result.rows[0]});
 });
 
-router.patch('/governance/departments/:id', requireRoles('admin'), async (req, res) => {
+router.patch('/governance/departments/:id', requireRoles('admin', 'dev'), async (req, res) => {
   const schema=z.object({nameTh:z.string().trim().min(2).max(200),isActive:z.boolean()});
   const parsed=schema.safeParse(req.body); if(!parsed.success) throw new ApiError(400,'ข้อมูลหน่วยงานไม่ถูกต้อง',parsed.error.flatten());
   const result=await pool.query(`UPDATE departments SET name_th=$1,is_active=$2,updated_at=current_timestamp WHERE id=$3 RETURNING *`,[parsed.data.nameTh,parsed.data.isActive,req.params.id]);
@@ -1345,7 +1389,7 @@ router.patch('/governance/departments/:id', requireRoles('admin'), async (req, r
   res.json({success:true,data:result.rows[0]});
 });
 
-router.get('/governance/users', requireRoles('admin'), async (req, res) => {
+router.get('/governance/users', requireRoles('admin', 'dev'), async (req, res) => {
   const result = await pool.query(
     `SELECT
         su.id,
@@ -1366,12 +1410,12 @@ router.get('/governance/users', requireRoles('admin'), async (req, res) => {
   res.json({ success: true, data: result.rows });
 });
 
-router.post('/governance/users', requireRoles('admin'), async (req, res) => {
+router.post('/governance/users', requireRoles('admin', 'dev'), async (req, res) => {
   const schema = z.object({
     username: z.string().trim().min(3).max(100),
     password: z.string().min(12).max(200),
     displayName: z.string().trim().min(2).max(200),
-    role: z.enum(['officer', 'supervisor', 'executive', 'admin']),
+    role: z.enum(['officer', 'supervisor', 'executive', 'admin', 'dev']),
     departmentId: z.string().uuid().nullable().optional(),
   });
 
@@ -1385,7 +1429,7 @@ router.post('/governance/users', requireRoles('admin'), async (req, res) => {
   }
 
   const departmentId =
-    ['admin', 'executive'].includes(parsed.data.role)
+    ['admin', 'dev', 'executive'].includes(parsed.data.role)
       ? null
       : parsed.data.departmentId ?? null;
 
@@ -1486,7 +1530,7 @@ router.post('/governance/users', requireRoles('admin'), async (req, res) => {
   res.status(201).json({ success: true, data: result.rows[0] });
 });
 
-router.patch('/governance/users/:id', requireRoles('admin'), async (req, res) => {
+router.patch('/governance/users/:id', requireRoles('admin', 'dev'), async (req, res) => {
   const idResult = z.string().uuid().safeParse(req.params.id);
   if (!idResult.success) {
     throw new ApiError(400, 'รหัสผู้ใช้งานไม่ถูกต้อง');
@@ -1494,7 +1538,7 @@ router.patch('/governance/users/:id', requireRoles('admin'), async (req, res) =>
 
   const schema = z.object({
     displayName: z.string().trim().min(2).max(200),
-    role: z.enum(['officer', 'supervisor', 'executive', 'admin']),
+    role: z.enum(['officer', 'supervisor', 'executive', 'admin', 'dev']),
     departmentId: z.string().uuid().nullable().optional(),
     isActive: z.boolean(),
     password: z.string().min(12).max(200).nullable().optional(),
@@ -1510,7 +1554,7 @@ router.patch('/governance/users/:id', requireRoles('admin'), async (req, res) =>
   }
 
   const departmentId =
-    ['admin', 'executive'].includes(parsed.data.role)
+    ['admin', 'dev', 'executive'].includes(parsed.data.role)
       ? null
       : parsed.data.departmentId ?? null;
 
@@ -1631,7 +1675,7 @@ router.patch('/governance/users/:id', requireRoles('admin'), async (req, res) =>
   res.json({ success: true, data: result.rows[0] });
 });
 
-router.delete('/governance/users/:id', requireRoles('admin'), async (req, res) => {
+router.delete('/governance/users/:id', requireRoles('admin', 'dev'), async (req, res) => {
   const idResult = z.string().uuid().safeParse(req.params.id);
   if (!idResult.success) throw new ApiError(400, 'รหัสผู้ใช้งานไม่ถูกต้อง');
   if (idResult.data === req.admin.id) {
@@ -1651,11 +1695,11 @@ router.delete('/governance/users/:id', requireRoles('admin'), async (req, res) =
     if (!userResult.rowCount) throw new ApiError(404, 'ไม่พบผู้ใช้งาน');
 
     const selectedUser = userResult.rows[0];
-    if (selectedUser.role === 'admin') {
+    if (isSystemAdminRole(selectedUser.role)) {
       const adminCountResult = await client.query(
         `SELECT count(*)::integer AS admin_count
            FROM staff_users
-          WHERE role = 'admin'
+          WHERE role IN ('admin', 'dev')
             AND is_active = true
             AND id <> $1`,
         [idResult.data],
@@ -1699,7 +1743,7 @@ router.delete('/governance/users/:id', requireRoles('admin'), async (req, res) =
   }
 });
 
-router.get('/governance/audit-logs', requireRoles('admin','supervisor','executive','exclusive'), async (req, res) => {
+router.get('/governance/audit-logs', requireRoles('admin','dev','supervisor','executive','exclusive'), async (req, res) => {
   if (canReadAllDepartments(req.admin.role)) {
     const result = await pool.query(
       `SELECT
@@ -1749,7 +1793,7 @@ router.get('/governance/audit-logs', requireRoles('admin','supervisor','executiv
   res.json({ success: true, data: result.rows });
 });
 
-router.get('/reports/export.csv', requireRoles('admin', 'supervisor', 'executive', 'exclusive'), async (req, res) => {
+router.get('/reports/export.csv', requireRoles('admin', 'dev', 'supervisor', 'executive', 'exclusive'), async (req, res) => {
   const globalAccess = canReadAllDepartments(req.admin.role);
   const departmentId = globalAccess
     ? getRequestedDepartmentId(req)

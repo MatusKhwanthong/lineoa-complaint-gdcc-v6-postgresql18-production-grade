@@ -359,6 +359,29 @@ input,select,textarea{
   }
 }
 
+.v3-kpi-grid.system-admin-kpis{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+}
+
+.v3-kpi strong.kpi-text-value{
+  min-height:2.7em;
+  font-size:1.05rem;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+}
+
+@media(max-width:1250px){
+  .v3-kpi-grid.system-admin-kpis{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+
+@media(max-width:600px){
+  .v3-kpi-grid.system-admin-kpis{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
 @media(max-width:340px){
   .v3-kpi-grid,
   .report-kpi-grid{

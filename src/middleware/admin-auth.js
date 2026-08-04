@@ -44,5 +44,5 @@ export function requireRoles(...roles) {
 // "role ปัจจุบันอยู่เหนือ officer หรือไม่" ใช้เวลาต้องแยกว่า
 // supervisor/admin ทำได้ไม่จำกัด แต่ officer ทำได้เฉพาะงานของตัวเอง
 export function isElevatedStaff(admin) {
-  return Boolean(admin) && (admin.role === 'admin' || admin.role === 'supervisor');
+  return Boolean(admin) && ['admin', 'dev', 'supervisor'].includes(admin.role);
 }
