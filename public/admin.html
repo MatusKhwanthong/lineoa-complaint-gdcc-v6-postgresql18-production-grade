@@ -19,7 +19,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin="anonymous"
     ></script>
-    <script type="module" src="/admin.js?v=20260804-backend-usage-1"></script>
+    <script type="module" src="/admin.js?v=20260804-user-insight-1"></script>
   </head>
   <body class="admin-v3-body">
     <section id="loginPanel" class="v3-login">
@@ -180,6 +180,18 @@
                 <div id="statusLegend" class="donut-legend"></div>
               </div>
             </article>
+            <article id="userStatusCard" class="v3-card status-card hidden">
+              <div class="v3-card-head">
+                <div>
+                  <p class="overline">USER STATUS</p>
+                  <h2>สถานะการเข้าใช้งาน Backend</h2>
+                </div>
+              </div>
+              <div class="donut-layout">
+                <div id="userStatusDonut" class="donut-chart"></div>
+                <div id="userStatusLegend" class="donut-legend"></div>
+              </div>
+            </article>
             <article class="v3-card urgent-card">
               <div class="v3-card-head">
                 <div>
@@ -200,6 +212,15 @@
                 </div>
               </div>
               <div id="categoryBars" class="metric-bars"></div>
+            </article>
+            <article id="topUserDepartmentsCard" class="v3-card category-card hidden">
+              <div class="v3-card-head">
+                <div>
+                  <p class="overline">TOP USER DEPARTMENTS</p>
+                  <h2>จำนวนผู้เข้าใช้งานตามหน่วยงาน (30 วัน)</h2>
+                </div>
+              </div>
+              <div id="userDepartmentBars" class="metric-bars"></div>
             </article>
             <article class="v3-card recent-card span-2">
               <div class="v3-card-head">

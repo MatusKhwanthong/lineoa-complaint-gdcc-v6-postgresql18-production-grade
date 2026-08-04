@@ -1020,44 +1020,63 @@ router.get('/dashboard', async (req, res) => {
     ),
   ]);
 
-  const backendUsage = isSystemAdminRole(req.admin.role)
-    ? (
-        await pool.query(`
-          WITH user_counts AS (
-            SELECT
-              count(*)::integer AS total_users,
-              count(*) FILTER (WHERE is_active = true)::integer AS active_users
-            FROM staff_users
-          ),
-          department_activity AS (
-            SELECT
-              d.name_th AS department_name,
-              count(a.id)::integer AS activity_count,
-              count(DISTINCT a.actor_staff_user_id)::integer AS active_user_count
-            FROM departments d
-            JOIN staff_users su
-              ON su.department_id = d.id
-             AND su.is_active = true
-            JOIN audit_logs a
-              ON a.actor_staff_user_id = su.id
-             AND a.created_at >= current_timestamp - interval '30 days'
-            WHERE d.is_active = true
-            GROUP BY d.id, d.name_th
-            ORDER BY activity_count DESC, active_user_count DESC, d.name_th
-            LIMIT 1
-          )
-          SELECT
-            uc.total_users,
-            uc.active_users,
-            da.department_name,
-            COALESCE(da.activity_count, 0)::integer AS activity_count,
-            COALESCE(da.active_user_count, 0)::integer AS active_user_count,
-            30::integer AS period_days
-          FROM user_counts uc
-          LEFT JOIN department_activity da ON true
-        `)
-      ).rows[0]
-    : null;
+  let backendUsage = null;
+  if (isSystemAdminRole(req.admin.role)) {
+    const [userCountResult, departmentLoginResult] = await Promise.all([
+      pool.query(`
+        SELECT
+          count(*)::integer AS total_users,
+          count(*) FILTER (WHERE is_active = true)::integer AS active_users,
+          count(*) FILTER (WHERE is_active = false)::integer AS inactive_users,
+          count(*) FILTER (
+            WHERE is_active = true
+              AND last_login_at >= current_timestamp - interval '30 days'
+          )::integer AS recent_login_users,
+          count(*) FILTER (
+            WHERE is_active = true
+              AND (
+                last_login_at IS NULL
+                OR last_login_at < current_timestamp - interval '30 days'
+              )
+          )::integer AS no_recent_login_users
+        FROM staff_users
+      `),
+      pool.query(`
+        SELECT
+          d.name_th AS label,
+          count(su.id) FILTER (
+            WHERE su.is_active = true
+              AND su.last_login_at >= current_timestamp - interval '30 days'
+          )::integer AS value,
+          max(su.last_login_at) AS latest_login_at
+        FROM departments d
+        LEFT JOIN staff_users su ON su.department_id = d.id
+        WHERE d.is_active = true
+        GROUP BY d.id, d.name_th
+        HAVING count(su.id) FILTER (
+          WHERE su.is_active = true
+            AND su.last_login_at >= current_timestamp - interval '30 days'
+        ) > 0
+        ORDER BY value DESC, latest_login_at DESC, d.name_th
+        LIMIT 8
+      `),
+    ]);
+
+    const counts = userCountResult.rows[0];
+    const topDepartment = departmentLoginResult.rows[0] ?? null;
+    backendUsage = {
+      ...counts,
+      department_name: topDepartment?.label ?? null,
+      active_user_count: topDepartment?.value ?? 0,
+      period_days: 30,
+      user_status_breakdown: [
+        { label: 'recent_login', value: counts.recent_login_users },
+        { label: 'no_recent_login', value: counts.no_recent_login_users },
+        { label: 'inactive', value: counts.inactive_users },
+      ],
+      department_login_breakdown: departmentLoginResult.rows,
+    };
+  }
 
   res.json({
     success: true,
@@ -1428,6 +1447,13 @@ router.post('/governance/users', requireRoles('admin', 'dev'), async (req, res) 
     );
   }
 
+  if (parsed.data.role === 'dev') {
+    throw new ApiError(
+      403,
+      'ไม่สามารถเพิ่มบัญชี DEV จากหน้าจัดการผู้ใช้งานได้ ระบบอนุญาตให้มี DEV เพียง 1 บัญชี',
+    );
+  }
+
   const departmentId =
     ['admin', 'dev', 'executive'].includes(parsed.data.role)
       ? null
@@ -1551,6 +1577,30 @@ router.patch('/governance/users/:id', requireRoles('admin', 'dev'), async (req, 
       'ข้อมูลผู้ใช้งานไม่ถูกต้อง',
       parsed.error.flatten(),
     );
+  }
+
+  const existingUserResult = await pool.query(
+    `SELECT id, role
+       FROM staff_users
+      WHERE id = $1`,
+    [idResult.data],
+  );
+  if (!existingUserResult.rowCount) {
+    throw new ApiError(404, 'ไม่พบผู้ใช้งาน');
+  }
+
+  const existingUser = existingUserResult.rows[0];
+  if (existingUser.role === 'dev' && req.admin.role !== 'dev') {
+    throw new ApiError(403, 'Admin ไม่สามารถแก้ไขบัญชี DEV ได้');
+  }
+  if (parsed.data.role === 'dev' && existingUser.role !== 'dev') {
+    throw new ApiError(
+      403,
+      'ไม่สามารถแต่งตั้งผู้ใช้งานเป็น DEV จากหน้าจัดการผู้ใช้งานได้',
+    );
+  }
+  if (existingUser.role === 'dev' && parsed.data.role !== 'dev') {
+    throw new ApiError(409, 'ไม่สามารถเปลี่ยนสิทธิ์ของบัญชี DEV ได้');
   }
 
   const departmentId =
@@ -1695,6 +1745,9 @@ router.delete('/governance/users/:id', requireRoles('admin', 'dev'), async (req,
     if (!userResult.rowCount) throw new ApiError(404, 'ไม่พบผู้ใช้งาน');
 
     const selectedUser = userResult.rows[0];
+    if (selectedUser.role === 'dev') {
+      throw new ApiError(409, 'ไม่สามารถลบบัญชี DEV ได้');
+    }
     if (isSystemAdminRole(selectedUser.role)) {
       const adminCountResult = await client.query(
         `SELECT count(*)::integer AS admin_count
