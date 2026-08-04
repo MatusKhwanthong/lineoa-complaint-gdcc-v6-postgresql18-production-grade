@@ -1,10 +1,7 @@
-node_modules
-npm-debug.log
-.env
-.git
-.gitignore
-uploads
-backups
-coverage
-*.zip
-.DS_Store
+.env*
+!.env.example
+!.env.production.example
+backup_*.sql
+backup_*.dump
+*.bak
+migration-error.txt

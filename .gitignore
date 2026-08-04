@@ -1,9 +1,17 @@
 node_modules/
-.env
+
+.env*
+!.env.example
+!.env.production.example
+
 *.log
 coverage/
 .DS_Store
-backups/
 
 uploads/
 backups/
+
+/backup_*.sql
+/backup_*.dump
+/*.bak
+/migration-error.txt
