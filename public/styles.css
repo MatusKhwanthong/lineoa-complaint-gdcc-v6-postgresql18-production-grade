@@ -111,10 +111,15 @@ input,select,textarea{
     text-overflow:ellipsis;
     white-space:nowrap;
   }
-  .citizen-logo{
-    width:40px;
-    height:40px;
-    flex:0 0 40px;
+  .citizen-logo {
+  display: block;
+  width: 45px;
+  height: 45px;
+  flex: 0 0 45px;
+  padding: 2px;
+  border-radius: 14px;
+  object-fit: contain;
+  background: #fff;
   }
   .line-status{
     min-width:0;
