@@ -234,6 +234,10 @@ router.get('/', async (req, res) => {
         c.created_at,
         c.updated_at,
         cc.name_th AS category_name,
+        d.name_th AS department_name,
+        asp.full_name AS assigned_staff_name,
+        asp.position_title AS assigned_staff_position,
+        asp.phone AS assigned_staff_phone,
         (
           SELECT COALESCE(
             json_agg(
@@ -276,6 +280,8 @@ router.get('/', async (req, res) => {
         ) AS attachments
        FROM complaints c
        JOIN complaint_categories cc ON cc.id = c.category_id
+       LEFT JOIN departments d ON d.id = c.department_id
+       LEFT JOIN staff_profiles asp ON asp.id = c.assigned_staff_profile_id
       WHERE c.line_user_id = $1
       ORDER BY c.created_at DESC
       LIMIT 100`,
@@ -326,6 +332,10 @@ router.get('/:referenceNo', async (req, res) => {
         c.created_at,
         c.updated_at,
         cc.name_th AS category_name,
+        d.name_th AS department_name,
+        asp.full_name AS assigned_staff_name,
+        asp.position_title AS assigned_staff_position,
+        asp.phone AS assigned_staff_phone,
         (
           SELECT COALESCE(
             json_agg(
@@ -352,6 +362,8 @@ router.get('/:referenceNo', async (req, res) => {
         ) AS attachments
        FROM complaints c
        JOIN complaint_categories cc ON cc.id = c.category_id
+       LEFT JOIN departments d ON d.id = c.department_id
+       LEFT JOIN staff_profiles asp ON asp.id = c.assigned_staff_profile_id
       WHERE c.reference_no = $1
         AND c.line_user_id = $2`,
     [req.params.referenceNo, req.lineUser.userId],

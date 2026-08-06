@@ -70,6 +70,16 @@ export async function notifyAssignmentChanged(complaint, note) {
     'เจ้าหน้าที่ได้ส่งเรื่องให้หน่วยงานที่รับผิดชอบแล้ว',
   ];
 
+  if (complaint.assigned_staff_name) {
+    lines.push(`เจ้าหน้าที่ผู้รับผิดชอบ: ${complaint.assigned_staff_name}`);
+  }
+  if (complaint.assigned_staff_position) {
+    lines.push(`ตำแหน่ง: ${complaint.assigned_staff_position}`);
+  }
+  if (complaint.assigned_staff_phone) {
+    lines.push(`เบอร์โทรศัพท์: ${complaint.assigned_staff_phone}`);
+  }
+
   if (note) lines.push(`หมายเหตุ: ${note}`);
 
   try {

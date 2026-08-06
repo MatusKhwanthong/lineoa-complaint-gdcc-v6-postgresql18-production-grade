@@ -719,6 +719,11 @@ async function loadComplaints() {
       const location = document.createElement('p');
       location.textContent = `สถานที่: ${item.location_text?.trim() || '-'}`;
 
+      const assignedStaff = document.createElement('p');
+      assignedStaff.textContent = item.assigned_staff_name
+        ? `เจ้าหน้าที่ผู้รับผิดชอบ: ${item.assigned_staff_name}${item.assigned_staff_position ? ` (${item.assigned_staff_position})` : ''}${item.assigned_staff_phone ? ` • ${item.assigned_staff_phone}` : ''}`
+        : 'เจ้าหน้าที่ผู้รับผิดชอบ: ยังไม่มอบหมาย';
+
       const actions = document.createElement('div');
       actions.className = 'card-actions';
 
@@ -744,6 +749,7 @@ async function loadComplaints() {
       details.append(
         description,
         location,
+        assignedStaff,
         actions,
         timeline,
       );

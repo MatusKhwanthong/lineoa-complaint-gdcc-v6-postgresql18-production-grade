@@ -281,6 +281,9 @@ router.get('/complaints', async (req, res) => {
         cc.name_th AS category_name,
         d.name_th AS department_name,
         su.display_name AS assigned_staff_name,
+        asp.full_name AS assigned_profile_name,
+        asp.position_title AS assigned_profile_position,
+        asp.phone AS assigned_profile_phone,
         (
           SELECT COALESCE(
             json_agg(
@@ -309,6 +312,7 @@ router.get('/complaints', async (req, res) => {
        JOIN complaint_categories cc ON cc.id = c.category_id
        LEFT JOIN departments d ON d.id = c.department_id
        LEFT JOIN staff_users su ON su.id = c.assigned_staff_user_id
+       LEFT JOIN staff_profiles asp ON asp.id = c.assigned_staff_profile_id
        ${where}
       ORDER BY c.created_at DESC
       LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,
@@ -347,6 +351,9 @@ router.get('/complaints/:id', async (req, res) => {
         cc.name_th AS category_name,
         d.name_th AS department_name,
         su.display_name AS assigned_staff_name,
+        asp.full_name AS assigned_profile_name,
+        asp.position_title AS assigned_profile_position,
+        asp.phone AS assigned_profile_phone,
         (
           SELECT COALESCE(
             json_agg(
@@ -375,6 +382,7 @@ router.get('/complaints/:id', async (req, res) => {
        JOIN complaint_categories cc ON cc.id = c.category_id
       LEFT JOIN departments d ON d.id = c.department_id
       LEFT JOIN staff_users su ON su.id = c.assigned_staff_user_id
+      LEFT JOIN staff_profiles asp ON asp.id = c.assigned_staff_profile_id
       WHERE c.id = $1`,
     [req.params.id],
   );
@@ -1164,6 +1172,31 @@ router.get('/staff', requireRoles('admin', 'dev', 'supervisor', 'executive', 'ex
   res.json({ success: true, data: result.rows });
 });
 
+router.get(
+  '/assignment-staff',
+  requireRoles('admin', 'dev', 'supervisor', 'officer'),
+  async (req, res) => {
+    const parsed = z.object({ departmentId: z.string().uuid() }).safeParse(req.query);
+    if (!parsed.success) throw new ApiError(400, 'กรุณาเลือกหน่วยงานก่อนเลือกเจ้าหน้าที่');
+
+    if (
+      !isSystemAdminRole(req.admin.role) &&
+      parsed.data.departmentId !== getAdminDepartmentId(req)
+    ) {
+      throw new ApiError(403, 'ไม่มีสิทธิ์ดูข้อมูลเจ้าหน้าที่ของหน่วยงานอื่น');
+    }
+
+    const result = await pool.query(
+      `SELECT id, full_name, position_title, phone, department_id
+         FROM staff_profiles
+        WHERE department_id = $1
+        ORDER BY full_name`,
+      [parsed.data.departmentId],
+    );
+    res.json({ success: true, data: result.rows });
+  },
+);
+
 router.patch(
   '/complaints/:id/assignment',
   requireRoles('admin', 'dev', 'supervisor', 'officer'),
@@ -1175,6 +1208,7 @@ router.patch(
 
     const schema = z.object({
       departmentId: z.string().uuid().nullable().optional(),
+      staffProfileId: z.string().uuid().nullable().optional(),
       priority: z.enum(['low','normal','high','urgent']).default('normal'),
       dueAt: z.string().datetime().nullable().optional(),
       note: z.string().trim().max(2000).nullable().optional(),
@@ -1190,7 +1224,7 @@ router.patch(
     }
 
     const currentResult = await pool.query(
-      `SELECT id, department_id, status
+      `SELECT id, department_id, assigned_staff_profile_id, status
          FROM complaints
         WHERE id = $1`,
       [req.params.id],
@@ -1253,12 +1287,36 @@ router.patch(
       }
     }
 
+    let assignedStaffProfileId = Object.hasOwn(parsed.data, 'staffProfileId')
+      ? parsed.data.staffProfileId
+      : current.assigned_staff_profile_id;
+    if (departmentId !== current.department_id && !Object.hasOwn(parsed.data, 'staffProfileId')) {
+      assignedStaffProfileId = null;
+    }
+
+    let assignedStaffProfile = null;
+    if (assignedStaffProfileId) {
+      if (!departmentId) throw new ApiError(400, 'กรุณาเลือกหน่วยงานก่อนเลือกเจ้าหน้าที่');
+      const profileResult = await pool.query(
+        `SELECT id, full_name, position_title, phone, department_id
+           FROM staff_profiles
+          WHERE id = $1
+            AND department_id = $2`,
+        [assignedStaffProfileId, departmentId],
+      );
+      if (!profileResult.rowCount) {
+        throw new ApiError(400, 'ไม่พบเจ้าหน้าที่ในหน่วยงานที่เลือก');
+      }
+      assignedStaffProfile = profileResult.rows[0];
+    }
+
     const result = await pool.query(
       `UPDATE complaints
           SET department_id = $1,
+              assigned_staff_profile_id = $2,
               assigned_staff_user_id = NULL,
-              priority = $2,
-              due_at = $3,
+              priority = $3,
+              due_at = $4,
               status = CASE
                 WHEN $1::uuid IS NOT NULL AND status IN ('new', 'received')
                   THEN 'assigned'::complaint_status
@@ -1267,10 +1325,11 @@ router.patch(
                 ELSE status
               END,
               updated_at = current_timestamp
-        WHERE id = $4
+        WHERE id = $5
         RETURNING *`,
       [
         departmentId,
+        assignedStaffProfileId,
         parsed.data.priority,
         parsed.data.dueAt ?? null,
         req.params.id,
@@ -1290,7 +1349,11 @@ router.patch(
         req.params.id,
         current.status,
         result.rows[0].status,
-        parsed.data.note || (departmentId ? 'มอบหมายหน่วยงานแล้ว' : 'บันทึกข้อมูลโดยยังไม่มอบหมายหน่วยงาน'),
+        parsed.data.note || (assignedStaffProfile
+          ? `มอบหมายเจ้าหน้าที่ ${assignedStaffProfile.full_name}`
+          : departmentId
+            ? 'มอบหมายหน่วยงานแล้ว'
+            : 'บันทึกข้อมูลโดยยังไม่มอบหมายหน่วยงาน'),
         req.admin.id,
       ],
     );
@@ -1302,6 +1365,9 @@ router.patch(
       req.params.id,
       {
         departmentId,
+        staffProfileId: assignedStaffProfileId,
+        staffName: assignedStaffProfile?.full_name ?? null,
+        staffPhone: assignedStaffProfile?.phone ?? null,
         priority: parsed.data.priority,
         dueAt: parsed.data.dueAt ?? null,
         note: parsed.data.note ?? null,
@@ -1312,10 +1378,19 @@ router.patch(
     const statusChanged = current.status !== result.rows[0].status;
     const assignmentChanged = Boolean(departmentId) && (
       current.department_id !== departmentId ||
+      current.assigned_staff_profile_id !== assignedStaffProfileId ||
       (current.status !== 'assigned' && result.rows[0].status === 'assigned')
     );
     const lineNotified = assignmentChanged
-      ? await notifyAssignmentChanged(result.rows[0], parsed.data.note)
+      ? await notifyAssignmentChanged(
+          {
+            ...result.rows[0],
+            assigned_staff_name: assignedStaffProfile?.full_name ?? null,
+            assigned_staff_position: assignedStaffProfile?.position_title ?? null,
+            assigned_staff_phone: assignedStaffProfile?.phone ?? null,
+          },
+          parsed.data.note,
+        )
       : null;
 
     const message = assignmentChanged
@@ -1323,7 +1398,7 @@ router.patch(
         ? 'บันทึกการมอบหมายและแจ้งประชาชนผ่าน LINE เรียบร้อย'
         : 'บันทึกการมอบหมายเรียบร้อย แต่แจ้งประชาชนผ่าน LINE ไม่สำเร็จ'
       : departmentId
-        ? 'บันทึกการมอบหมายเรียบร้อย โดยไม่มีการเปลี่ยนหน่วยงานจึงไม่ส่ง LINE ซ้ำ'
+        ? 'บันทึกการมอบหมายเรียบร้อย โดยข้อมูลการมอบหมายไม่เปลี่ยนจึงไม่ส่ง LINE ซ้ำ'
         : 'บันทึกข้อมูลเรียบร้อย โดยยังไม่มีการมอบหมายจึงไม่ส่ง LINE';
 
     res.json({
@@ -1331,6 +1406,8 @@ router.patch(
       message,
       data: {
         ...result.rows[0],
+        assignedStaffName: assignedStaffProfile?.full_name ?? null,
+        assignedStaffPhone: assignedStaffProfile?.phone ?? null,
         statusChanged,
         assignmentChanged,
         lineNotified,
