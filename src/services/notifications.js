@@ -50,3 +50,22 @@ export async function notifyStatusChanged(complaint, note) {
     return false;
   }
 }
+
+export async function notifyAssignmentChanged(complaint, note) {
+  const lines = [
+    'เรื่องร้องเรียนของท่านได้รับการมอบหมายแล้ว',
+    `เลขรับเรื่อง: ${complaint.reference_no}`,
+    `เรื่อง: ${complaint.title}`,
+    'เจ้าหน้าที่ได้ส่งเรื่องให้หน่วยงานที่รับผิดชอบแล้ว',
+  ];
+
+  if (note) lines.push(`หมายเหตุ: ${note}`);
+
+  try {
+    await pushTextMessage(complaint.line_user_id, lines.join('\n'));
+    return true;
+  } catch (error) {
+    console.error('Unable to send assignment notification:', error.message);
+    return false;
+  }
+}

@@ -11,7 +11,7 @@ import {
   statusUpdateSchema,
   workProgressUpdateSchema,
 } from '../validators.js';
-import { notifyStatusChanged } from '../services/notifications.js';
+import { notifyAssignmentChanged, notifyStatusChanged } from '../services/notifications.js';
 import {
   cleanupStoredImageKeys,
   cleanupStoredImages,
@@ -1184,7 +1184,7 @@ router.patch(
     if (!parsed.success) {
       throw new ApiError(
         400,
-        'ข้อมูลการดำเนินงานไม่ถูกต้อง',
+        'ข้อมูลการมอบหมายไม่ถูกต้อง',
         parsed.error.flatten(),
       );
     }
@@ -1260,7 +1260,9 @@ router.patch(
               priority = $2,
               due_at = $3,
               status = CASE
-                WHEN status = 'new'
+                WHEN $1::uuid IS NOT NULL AND status IN ('new', 'received')
+                  THEN 'assigned'::complaint_status
+                WHEN $1::uuid IS NULL AND status = 'assigned'
                   THEN 'received'::complaint_status
                 ELSE status
               END,
@@ -1288,7 +1290,7 @@ router.patch(
         req.params.id,
         current.status,
         result.rows[0].status,
-        parsed.data.note || 'บันทึกการดำเนินงาน',
+        parsed.data.note || (departmentId ? 'มอบหมายหน่วยงานแล้ว' : 'บันทึกข้อมูลโดยยังไม่มอบหมายหน่วยงาน'),
         req.admin.id,
       ],
     );
@@ -1308,19 +1310,30 @@ router.patch(
     );
 
     const statusChanged = current.status !== result.rows[0].status;
-    if (statusChanged) {
-      await notifyStatusChanged(
-        result.rows[0],
-        parsed.data.note || 'เจ้าหน้าที่รับเรื่องร้องเรียนแล้ว',
-      );
-    }
+    const assignmentChanged = Boolean(departmentId) && (
+      current.department_id !== departmentId ||
+      (current.status !== 'assigned' && result.rows[0].status === 'assigned')
+    );
+    const lineNotified = assignmentChanged
+      ? await notifyAssignmentChanged(result.rows[0], parsed.data.note)
+      : null;
+
+    const message = assignmentChanged
+      ? lineNotified
+        ? 'บันทึกการมอบหมายและแจ้งประชาชนผ่าน LINE เรียบร้อย'
+        : 'บันทึกการมอบหมายเรียบร้อย แต่แจ้งประชาชนผ่าน LINE ไม่สำเร็จ'
+      : departmentId
+        ? 'บันทึกการมอบหมายเรียบร้อย โดยไม่มีการเปลี่ยนหน่วยงานจึงไม่ส่ง LINE ซ้ำ'
+        : 'บันทึกข้อมูลเรียบร้อย โดยยังไม่มีการมอบหมายจึงไม่ส่ง LINE';
 
     res.json({
       success: true,
-      message: 'บันทึกการดำเนินงานเรียบร้อย',
+      message,
       data: {
         ...result.rows[0],
         statusChanged,
+        assignmentChanged,
+        lineNotified,
       },
     });
   },
