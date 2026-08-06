@@ -19,7 +19,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin="anonymous"
     ></script>
-    <script type="module" src="/admin.js?v=20260806-assignment-notify-1"></script>
+    <script type="module" src="/admin.js?v=20260806-dev-staff-directory-1"></script>
   </head>
   <body class="admin-v3-body">
     <section id="loginPanel" class="v3-login">
@@ -404,6 +404,9 @@
             <button class="governance-tab" data-governance="users">
               ผู้ใช้งาน
             </button>
+            <button class="governance-tab" data-governance="staffProfiles">
+              ข้อมูลเจ้าหน้าที่
+            </button>
             <button class="governance-tab" data-governance="audit">
               Audit Log
             </button>
@@ -454,6 +457,21 @@
               </button>
             </div>
             <div id="userGovernanceTable"></div>
+          </section>
+          <section id="governanceStaffProfiles" class="governance-panel v3-card hidden">
+            <div class="v3-card-head">
+              <div>
+                <p class="overline">STAFF DIRECTORY</p>
+                <h2>ข้อมูลเจ้าหน้าที่</h2>
+              </div>
+              <button
+                id="addStaffProfileButton"
+                class="v3-primary hidden"
+              >
+                เพิ่มข้อมูลเจ้าหน้าที่
+              </button>
+            </div>
+            <div id="staffProfileGovernanceTable"></div>
           </section>
           <section id="governanceAudit" class="governance-panel v3-card hidden">
             <div class="v3-card-head">
