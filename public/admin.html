@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#083f3a" />
     <title>Smart City Complaint Command Center</title>
     <link rel="stylesheet" href="/styles.css?v=20260727-image-viewer-1" />
-    <link rel="stylesheet" href="/admin-v3.css?v=20260806-map-legend-1" />
+    <link rel="stylesheet" href="/admin-v3.css?v=20260806-drawer-pastel-1" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -299,11 +299,11 @@
                   <p>เลือกหมุดเพื่อตรวจสอบเรื่องร้องเรียนบน OpenStreetMap</p>
                 </div>
                 <div class="map-status-legend" aria-label="คำอธิบายสีของหมุดสถานะ">
-                  <span><i style="--marker-color:#e7a61b"></i>รับเรื่องใหม่</span>
-                  <span><i style="--marker-color:#3f79db"></i>รับเรื่องแล้ว</span>
-                  <span><i style="--marker-color:#568ce8"></i>มอบหมายแล้ว</span>
-                  <span><i style="--marker-color:#8d59d7"></i>กำลังดำเนินการ</span>
-                  <span><i style="--marker-color:#19a676"></i>เสร็จสิ้น</span>
+                  <span><i class="map-legend-new"></i>รับเรื่องใหม่</span>
+                  <span><i class="map-legend-received"></i>รับเรื่องแล้ว</span>
+                  <span><i class="map-legend-assigned"></i>มอบหมายแล้ว</span>
+                  <span><i class="map-legend-progress"></i>กำลังดำเนินการ</span>
+                  <span><i class="map-legend-completed"></i>เสร็จสิ้น</span>
                 </div>
               </div>
               <div

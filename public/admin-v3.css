@@ -394,8 +394,26 @@ input,select,textarea{
   flex:0 0 12px;
   border:2px solid #fff;
   border-radius:50%;
-  background:var(--marker-color);
   box-shadow:0 1px 5px rgba(50,24,58,.24);
+}
+
+.map-status-legend .map-legend-new{background-color:#e7a61b!important}
+.map-status-legend .map-legend-received{background-color:#3f79db!important}
+.map-status-legend .map-legend-assigned{background-color:#568ce8!important}
+.map-status-legend .map-legend-progress{background-color:#8d59d7!important}
+.map-status-legend .map-legend-completed{background-color:#19a676!important}
+
+/* Complaint detail heading in the pastel-purple theme. */
+.drawer-hero{
+  color:#4b2b59!important;
+  border:1px solid #d8bce5;
+  background:linear-gradient(135deg,#f5ebfa,#e6d2f2)!important;
+  box-shadow:0 10px 24px rgba(91,58,102,.1);
+}
+
+.drawer-hero h3,
+.drawer-hero p{
+  color:#4b2b59!important;
 }
 
 @media(max-width:900px){
