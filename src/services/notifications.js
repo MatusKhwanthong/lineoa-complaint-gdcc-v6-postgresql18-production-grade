@@ -44,7 +44,9 @@ export async function notifyStatusChanged(complaint, note) {
 
   try {
     await pushTextMessage(complaint.line_user_id, lines.join('\n'));
+    return true;
   } catch (error) {
     console.error('Unable to send status notification:', error.message);
+    return false;
   }
 }

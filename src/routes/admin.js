@@ -6,7 +6,11 @@ import config from '../config.js';
 import { pool } from '../db.js';
 import { ApiError } from '../errors.js';
 import { requireAdmin, requireRoles } from '../middleware/admin-auth.js';
-import { adminLoginSchema, statusUpdateSchema } from '../validators.js';
+import {
+  adminLoginSchema,
+  statusUpdateSchema,
+  workProgressUpdateSchema,
+} from '../validators.js';
 import { notifyStatusChanged } from '../services/notifications.js';
 import {
   cleanupStoredImageKeys,
@@ -290,6 +294,7 @@ router.get('/complaints', async (req, res) => {
                  'source', a.attachment_source,
                  'createdAt', a.created_at,
                  'staffNote', a.staff_note,
+                 'workPhase', a.work_phase,
                  'staffName', creator.display_name
                )
                ORDER BY a.sort_order, a.created_at
@@ -355,6 +360,7 @@ router.get('/complaints/:id', async (req, res) => {
                  'source', a.attachment_source,
                  'createdAt', a.created_at,
                  'staffNote', a.staff_note,
+                 'workPhase', a.work_phase,
                  'staffName', creator.display_name
                )
               ORDER BY a.sort_order, a.created_at
@@ -495,15 +501,16 @@ router.post(
     const idResult = z.string().uuid().safeParse(req.params.id);
     if (!idResult.success) throw new ApiError(400, 'รหัสรายการไม่ถูกต้อง');
 
-    if (!req.files?.length) {
-      throw new ApiError(400, 'กรุณาเลือกรูปผลการดำเนินงานอย่างน้อย 1 ภาพ');
-    }
-
-    const noteResult = z.string().trim().max(500).optional().safeParse(
-      req.body?.note || undefined,
-    );
-    if (!noteResult.success) {
-      throw new ApiError(400, 'หมายเหตุรูปภาพยาวเกิน 500 ตัวอักษร');
+    const parsed = workProgressUpdateSchema.safeParse({
+      status: req.body?.status,
+      note: req.body?.note,
+    });
+    if (!parsed.success) {
+      throw new ApiError(
+        400,
+        'กรุณาเลือกสถานะกำลังดำเนินการหรือเสร็จสิ้น และตรวจสอบหมายเหตุ',
+        parsed.error.flatten(),
+      );
     }
 
     const complaintResult = await pool.query(
@@ -525,9 +532,26 @@ router.post(
       );
     }
 
-    let storedImages;
+    const nextStatus = parsed.data.status;
+    if (nextStatus !== selectedComplaint.status) {
+      const validNextStatuses = allowedTransitions[selectedComplaint.status] || [];
+      if (!validNextStatuses.includes(nextStatus)) {
+        throw new ApiError(
+          409,
+          `ไม่สามารถเปลี่ยนสถานะจาก ${selectedComplaint.status} เป็น ${nextStatus} ได้`,
+        );
+      }
+    }
+
+    if (!req.files?.length && nextStatus === selectedComplaint.status && !parsed.data.note) {
+      throw new ApiError(400, 'กรุณาแนบรูป ระบุหมายเหตุ หรือเปลี่ยนสถานะก่อนบันทึก');
+    }
+
+    let storedImages = [];
     try {
-      storedImages = await processAndStoreImages(req.files);
+      if (req.files?.length) {
+        storedImages = await processAndStoreImages(req.files);
+      }
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new ApiError(
@@ -537,6 +561,7 @@ router.post(
     }
     const client = await pool.connect();
     let updatedComplaint;
+    let previousStatus = selectedComplaint.status;
 
     try {
       await client.query('BEGIN');
@@ -550,6 +575,22 @@ router.post(
       if (currentResult.rowCount === 0) throw new ApiError(404, 'ไม่พบรายการ');
 
       const current = currentResult.rows[0];
+      previousStatus = current.status;
+      if (
+        !isSystemAdminRole(req.admin.role) &&
+        !isSameDepartmentStaff(req, current.department_id)
+      ) {
+        throw new ApiError(403, 'สามารถบันทึกได้เฉพาะเรื่องร้องเรียนของหน่วยงานตนเอง');
+      }
+      if (nextStatus !== current.status) {
+        const validNextStatuses = allowedTransitions[current.status] || [];
+        if (!validNextStatuses.includes(nextStatus)) {
+          throw new ApiError(
+            409,
+            `ไม่สามารถเปลี่ยนสถานะจาก ${current.status} เป็น ${nextStatus} ได้`,
+          );
+        }
+      }
       const sortResult = await client.query(
         `SELECT COALESCE(max(sort_order), -1)::integer AS last_sort_order
            FROM complaint_attachments
@@ -573,8 +614,9 @@ router.post(
             sort_order,
             attachment_source,
             created_by_staff_user_id,
-            staff_note
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'staff',$10,$11)`,
+            staff_note,
+            work_phase
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'staff',$10,$11,$12)`,
           [
             req.params.id,
             image.storageKey,
@@ -586,29 +628,24 @@ router.post(
             image.sha256,
             firstSortOrder + index,
             req.admin.id,
-            noteResult.data || null,
+            parsed.data.note,
+            nextStatus,
           ],
         );
       }
 
       const updateResult = await client.query(
         `UPDATE complaints
-            SET status = CASE
-                  WHEN status = 'in_progress'
-                    THEN 'completed'::complaint_status
-                  WHEN status NOT IN ('completed', 'rejected', 'cancelled')
-                    THEN 'in_progress'::complaint_status
-                  ELSE status
-                END,
+            SET status = $2,
                 completed_at = CASE
-                  WHEN status = 'in_progress'
+                  WHEN $2 = 'completed'::complaint_status
                     THEN COALESCE(completed_at, current_timestamp)
                   ELSE completed_at
                 END,
                 updated_at = current_timestamp
           WHERE id = $1
           RETURNING *`,
-        [req.params.id],
+        [req.params.id, nextStatus],
       );
       updatedComplaint = updateResult.rows[0];
 
@@ -625,10 +662,10 @@ router.post(
           req.params.id,
           current.status,
           updatedComplaint.status,
-          noteResult.data ||
-            (updatedComplaint.status === 'completed' && current.status !== 'completed'
-              ? `เจ้าหน้าที่แนบรูปผลการดำเนินงาน ${storedImages.length} ภาพ และดำเนินงานเสร็จสิ้น`
-              : `เจ้าหน้าที่แนบรูปผลการดำเนินงาน ${storedImages.length} ภาพ`),
+          parsed.data.note ||
+            (updatedComplaint.status === 'completed'
+              ? `บันทึกสถานะเสร็จสิ้น${storedImages.length ? ` พร้อมรูป ${storedImages.length} ภาพ` : ''}`
+              : `บันทึกสถานะกำลังดำเนินการ${storedImages.length ? ` พร้อมรูป ${storedImages.length} ภาพ` : ''}`),
           req.admin.id,
         ],
       );
@@ -648,38 +685,37 @@ router.post(
 
     await writeAudit(
       req,
-      'complaint.work_attachments.create',
+      'complaint.work_progress.update',
       'complaint',
       req.params.id,
       {
         imageCount: storedImages.length,
-        note: noteResult.data || null,
-        oldStatus: selectedComplaint.status,
+        note: parsed.data.note,
+        oldStatus: previousStatus,
         newStatus: updatedComplaint.status,
+        workPhase: nextStatus,
       },
     );
 
-    if (selectedComplaint.status !== updatedComplaint.status) {
-      await notifyStatusChanged(
-        updatedComplaint,
-        noteResult.data ||
-          (updatedComplaint.status === 'completed'
-            ? 'เจ้าหน้าที่ดำเนินงานเสร็จสิ้นและแนบรูปผลการดำเนินงานแล้ว'
-            : 'เจ้าหน้าที่เริ่มดำเนินการและแนบรูปผลการดำเนินงานแล้ว'),
-      );
-    }
+    const lineNotified = await notifyStatusChanged(
+      updatedComplaint,
+      parsed.data.note ||
+        (updatedComplaint.status === 'completed'
+          ? 'เจ้าหน้าที่ดำเนินงานเสร็จสิ้นแล้ว'
+          : 'เจ้าหน้าที่เริ่มดำเนินการแล้ว'),
+    );
 
     res.status(201).json({
       success: true,
-      message:
-        selectedComplaint.status !== updatedComplaint.status
-          ? updatedComplaint.status === 'completed'
-            ? 'บันทึกรูปและเปลี่ยนสถานะเป็นเสร็จสิ้นเรียบร้อย'
-            : 'บันทึกรูปและเปลี่ยนสถานะเป็นกำลังดำเนินการเรียบร้อย'
-          : 'บันทึกรูปผลการดำเนินงานเรียบร้อย',
+      message: lineNotified
+        ? updatedComplaint.status === 'completed'
+          ? 'บันทึกสถานะเสร็จสิ้นและแจ้ง LINE เรียบร้อย'
+          : 'บันทึกสถานะกำลังดำเนินการและแจ้ง LINE เรียบร้อย'
+        : 'บันทึกสถานะเรียบร้อย แต่แจ้ง LINE ไม่สำเร็จ กรุณาตรวจสอบการตั้งค่า LINE',
       data: {
         imageCount: storedImages.length,
         status: updatedComplaint.status,
+        lineNotified,
       },
     });
   },

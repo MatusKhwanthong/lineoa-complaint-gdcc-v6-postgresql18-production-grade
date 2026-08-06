@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { complaintCreateSchema } from '../src/validators.js';
+import {
+  complaintCreateSchema,
+  workProgressUpdateSchema,
+} from '../src/validators.js';
 
 const validComplaint = {
   categoryId: '11111111-1111-4111-8111-111111111111',
@@ -45,4 +48,22 @@ test('rejects a partial coordinate pair', () => {
   assert.deepEqual(result.error.flatten().fieldErrors.longitude, [
     'กรุณาระบุ Latitude และ Longitude ให้ครบทั้งคู่',
   ]);
+});
+
+test('accepts work progress and completion phases', () => {
+  assert.equal(
+    workProgressUpdateSchema.safeParse({ status: 'in_progress', note: 'กำลังซ่อมแซม' }).success,
+    true,
+  );
+  assert.equal(
+    workProgressUpdateSchema.safeParse({ status: 'completed', note: 'ดำเนินการเสร็จแล้ว' }).success,
+    true,
+  );
+});
+
+test('rejects unsupported work phases', () => {
+  assert.equal(
+    workProgressUpdateSchema.safeParse({ status: 'new', note: '' }).success,
+    false,
+  );
 });

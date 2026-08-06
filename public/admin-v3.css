@@ -508,6 +508,53 @@ input,select,textarea{
 .metric-tone-4{--bar-start:#765d98;--bar-end:#baa6cf}
 .metric-tone-5{--bar-start:#8b6bb0;--bar-end:#c9b4df}
 
+/* Work evidence grouped by workflow phase. */
+.work-phase-block{
+  margin:.7rem 0;
+  padding:.75rem;
+  border:1px solid #dec9e7;
+  border-radius:14px;
+  background:#faf5fc;
+}
+
+.work-phase-block.completed{
+  border-color:#bfe3d2;
+  background:#f0faf5;
+}
+
+.work-phase-block h4{
+  display:flex;
+  align-items:center;
+  gap:.48rem;
+  margin:0 0 .65rem;
+  color:#5b3a66;
+  font-size:.88rem;
+}
+
+.work-phase-block.completed h4{
+  color:#286c50;
+}
+
+.work-phase-dot{
+  width:11px;
+  height:11px;
+  flex:0 0 11px;
+  border-radius:50%;
+  background:#9b61b3;
+  box-shadow:0 0 0 4px #eee0f5;
+}
+
+.work-phase-dot.completed{
+  background:#24a274;
+  box-shadow:0 0 0 4px #dff4e9;
+}
+
+.work-progress-section .work-image-form{
+  margin-top:1rem;
+  padding-top:1rem;
+  border-top:1px solid #eadcf0;
+}
+
 @media(max-width:600px){
   .insight-metric-item{
     padding:.55rem .6rem .62rem;

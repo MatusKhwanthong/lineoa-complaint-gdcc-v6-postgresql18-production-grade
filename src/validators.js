@@ -73,3 +73,8 @@ export const statusUpdateSchema = z.object({
   ]),
   note: optionalText(2000),
 });
+
+export const workProgressUpdateSchema = z.object({
+  status: z.enum(['in_progress', 'completed']),
+  note: optionalText(500),
+});

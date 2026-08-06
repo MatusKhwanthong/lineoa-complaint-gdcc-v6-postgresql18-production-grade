@@ -263,6 +263,7 @@ router.get('/', async (req, res) => {
                  'source', a.attachment_source,
                  'createdAt', a.created_at,
                  'staffNote', a.staff_note,
+                 'workPhase', a.work_phase,
                  'staffName', creator.display_name
                )
               ORDER BY a.sort_order, a.created_at
@@ -338,6 +339,7 @@ router.get('/:referenceNo', async (req, res) => {
                  'source', a.attachment_source,
                  'createdAt', a.created_at,
                  'staffNote', a.staff_note,
+                 'workPhase', a.work_phase,
                  'staffName', creator.display_name
                )
               ORDER BY a.sort_order, a.created_at

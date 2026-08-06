@@ -122,23 +122,24 @@ async function openCase(id){
   $('#drawerReference').textContent=c.reference_no;
   const citizenAttachments=(c.attachments||[]).filter(attachment=>attachment.source!=='staff');
   const staffAttachments=(c.attachments||[]).filter(attachment=>attachment.source==='staff');
-  const [citizenImages,staffImages]=await Promise.all([
+  const progressAttachments=staffAttachments.filter(attachment=>attachment.workPhase==='in_progress'||(!attachment.workPhase&&c.status!=='completed'));
+  const completedAttachments=staffAttachments.filter(attachment=>attachment.workPhase==='completed'||(!attachment.workPhase&&c.status==='completed'));
+  const [citizenImages,progressImages,completedImages]=await Promise.all([
     attachmentMarkup(citizenAttachments),
-    attachmentMarkup(staffAttachments),
+    attachmentMarkup(progressAttachments),
+    attachmentMarkup(completedAttachments),
   ]);
   const canManageAssignment=['admin','dev','supervisor','officer'].includes(currentUser?.role);
   const canChangeDepartment=['admin','dev','supervisor'].includes(currentUser?.role);
   const canEditStatus=Boolean(c.canEditStatus);
   const depOptions=[...(isSystemAdmin()?['<option value="">ยังไม่มอบหมาย</option>']:[]),...departments.map(d=>`<option value="${d.id}" ${d.id===c.department_id?'selected':''}>${escapeHtml(d.name_th)}</option>`)].join('');
   const assignSection=canManageAssignment?`<section class="drawer-section"><h3>การดำเนินงาน</h3><div class="drawer-form"><label>หน่วยงาน<select id="assignDepartment" ${canChangeDepartment?'':'disabled'}>${depOptions}</select>${canChangeDepartment?'':'<small class="muted">เฉพาะ Admin และ Supervisor เท่านั้นที่เปลี่ยนหน่วยงานได้</small>'}</label><div class="two"><label>ความสำคัญ<select id="assignPriority"><option value="low">ต่ำ</option><option value="normal">ปกติ</option><option value="high">สูง</option><option value="urgent">เร่งด่วน</option></select></label><label>กำหนดเสร็จ<input id="assignDue" type="datetime-local"></label></div><label>หมายเหตุ<input id="assignNote" placeholder="รายละเอียดการดำเนินงาน"></label><button id="assignButton" class="v3-primary">บันทึกการดำเนินงาน</button></div></section>`:'';
-  const workImageSection=`<section class="drawer-section"><h3>รูปภาพผลการดำเนินงาน</h3>${staffImages?`<div class="drawer-images">${staffImages}</div>`:'<p class="muted">ยังไม่มีรูปผลการดำเนินงานจากเจ้าหน้าที่</p>'}${canEditStatus?`<div class="drawer-form work-image-form"><div id="workImageAlert" class="alert hidden"></div><label>แนบรูปจากการปฏิบัติงาน<input id="workImages" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple><small class="muted">รองรับ JPEG, PNG, WebP, HEIC และ HEIF ขนาดไม่เกิน 10 MB ต่อภาพ</small></label><label>หมายเหตุ<input id="workImageNote" maxlength="500" placeholder="เช่น ดำเนินการซ่อมแซมเรียบร้อย"></label><button id="uploadWorkImagesButton" class="v3-primary" type="button">อัปโหลดรูปการดำเนินงาน</button></div>`:''}</section>`;
-  const statusSection=`<section class="drawer-section"><h3>อัปเดตสถานะ</h3>${canEditStatus?`<div class="drawer-form"><select id="newStatus">${selectableStatusValues.map(v=>`<option value="${v}" ${v===c.status?'selected':''}>${statusLabels[v]}</option>`).join('')}</select><input id="statusNote" placeholder="หมายเหตุถึงประชาชน"><button id="statusButton" class="v3-primary">บันทึกสถานะและแจ้ง LINE</button></div>`:'<p class="muted">คุณสามารถแก้ไขสถานะได้เฉพาะเรื่องที่ได้รับมอบหมายเท่านั้น</p>'}</section>`;
+  const workImageSection=`<section class="drawer-section work-progress-section"><h3>รูปภาพผลการดำเนินงาน</h3><div class="work-phase-block"><h4><i class="work-phase-dot progress"></i>กำลังดำเนินการ</h4>${progressImages?`<div class="drawer-images">${progressImages}</div>`:'<p class="muted">ยังไม่มีรูปขณะกำลังดำเนินการ</p>'}</div><div class="work-phase-block completed"><h4><i class="work-phase-dot completed"></i>เสร็จสิ้น</h4>${completedImages?`<div class="drawer-images">${completedImages}</div>`:'<p class="muted">ยังไม่มีรูปเมื่อเสร็จสิ้น</p>'}</div>${canEditStatus?`<div class="drawer-form work-image-form"><div id="workImageAlert" class="alert hidden"></div><label>สถานะ<select id="workStatus"><option value="in_progress" ${c.status!=='completed'?'selected':''} ${c.status==='completed'?'disabled':''}>กำลังดำเนินการ</option><option value="completed" ${c.status==='completed'?'selected':''}>เสร็จสิ้น</option></select></label><label>แนบรูปจากการปฏิบัติงาน (ถ้ามี)<input id="workImages" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple><small class="muted">รองรับ JPEG, PNG, WebP, HEIC และ HEIF ขนาดไม่เกิน 10 MB ต่อภาพ</small></label><label>หมายเหตุ<input id="workImageNote" maxlength="500" placeholder="เช่น ดำเนินการซ่อมแซมเรียบร้อย"></label><button id="saveWorkProgressButton" class="v3-primary" type="button">บันทึกสถานะและแจ้ง LINE</button></div>`:'<p class="muted">คุณสามารถแก้ไขสถานะได้เฉพาะเรื่องที่ได้รับมอบหมายเท่านั้น</p>'}</section>`;
   const deleteSection=isSystemAdmin()?`<section class="drawer-section complaint-danger-zone"><h3>ลบเรื่องร้องเรียน</h3><p>การลบจะนำเรื่อง ประวัติ และรูปภาพทั้งหมดออกอย่างถาวร</p><button id="deleteComplaintButton" type="button" class="delete-complaint-button">ลบเรื่องร้องเรียน</button></section>`:'';
-  $('#drawerContent').innerHTML=`<div class="drawer-hero">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.category_name)} • ${priorityLabels[c.priority]||c.priority||'ปกติ'}</p></div><div class="drawer-grid"><div class="drawer-field"><span>ผู้ร้องเรียน</span><b>${escapeHtml(c.contact_name)}</b></div><div class="drawer-field"><span>โทรศัพท์</span><b>${escapeHtml(c.contact_phone)}</b></div><div class="drawer-field"><span>หน่วยงาน</span><b>${escapeHtml(c.department_name||'ยังไม่มอบหมาย')}</b></div></div><section class="drawer-section"><h3>รายละเอียดเรื่องร้องเรียน</h3><p>${escapeHtml(c.description)}</p><p><b>สถานที่:</b> ${escapeHtml(c.location_text)}</p>${c.latitude!=null&&c.longitude!=null?`<a class="map-link-button" target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">⌖ เปิดใน OpenStreetMap</a>`:''}</section>${citizenImages?`<section class="drawer-section"><h3>รูปภาพจากผู้แจ้ง</h3><div class="drawer-images">${citizenImages}</div></section>`:''}${workImageSection}${assignSection}${statusSection}<section class="drawer-section"><h3>ประวัติการดำเนินงาน</h3><div class="timeline">${(c.history||[]).map(h=>`<div class="timeline-item"><b>${statusLabels[h.new_status]||h.new_status}</b><p>${escapeHtml(h.note||'-')}</p><small>${fmt(h.created_at)} ${h.staff_name?`• ${escapeHtml(h.staff_name)}`:''}</small></div>`).join('')}</div></section>${deleteSection}`;
+  $('#drawerContent').innerHTML=`<div class="drawer-hero">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.category_name)} • ${priorityLabels[c.priority]||c.priority||'ปกติ'}</p></div><div class="drawer-grid"><div class="drawer-field"><span>ผู้ร้องเรียน</span><b>${escapeHtml(c.contact_name)}</b></div><div class="drawer-field"><span>โทรศัพท์</span><b>${escapeHtml(c.contact_phone)}</b></div><div class="drawer-field"><span>หน่วยงาน</span><b>${escapeHtml(c.department_name||'ยังไม่มอบหมาย')}</b></div></div><section class="drawer-section"><h3>รายละเอียดเรื่องร้องเรียน</h3><p>${escapeHtml(c.description)}</p><p><b>สถานที่:</b> ${escapeHtml(c.location_text)}</p>${c.latitude!=null&&c.longitude!=null?`<a class="map-link-button" target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude,c.longitude)}">⌖ เปิดใน OpenStreetMap</a>`:''}</section>${citizenImages?`<section class="drawer-section"><h3>รูปภาพจากผู้แจ้ง</h3><div class="drawer-images">${citizenImages}</div></section>`:''}${workImageSection}${assignSection}<section class="drawer-section"><h3>ประวัติการดำเนินงาน</h3><div class="timeline">${(c.history||[]).map(h=>`<div class="timeline-item"><b>${statusLabels[h.new_status]||h.new_status}</b><p>${escapeHtml(h.note||'-')}</p><small>${fmt(h.created_at)} ${h.staff_name?`• ${escapeHtml(h.staff_name)}`:''}</small></div>`).join('')}</div></section>${deleteSection}`;
   if(canManageAssignment){$('#assignPriority').value=c.priority||'normal';if(c.due_at)$('#assignDue').value=new Date(c.due_at).toISOString().slice(0,16);$('#assignButton').onclick=()=>assignCase(c.id)}
   if(canEditStatus){
-    $('#statusButton').onclick=()=>updateStatus(c.id);
-    $('#uploadWorkImagesButton').onclick=()=>uploadWorkImages(c.id);
+    $('#saveWorkProgressButton').onclick=()=>saveWorkProgress(c.id);
   }
   if(isSystemAdmin())$('#deleteComplaintButton').onclick=()=>openDeleteComplaintConfirmation(c);
   $('#detailDrawer').classList.remove('hidden');
@@ -148,12 +149,8 @@ async function openCase(id){
 function openDeleteComplaintConfirmation(complaint){complaintPendingDelete={id:complaint.id,referenceNo:complaint.reference_no};clear('#deleteComplaintAlert');$('#deleteComplaintReference').textContent=complaint.reference_no;$('#deleteComplaintReason').value='';const button=$('#deleteComplaintConfirmButton');button.disabled=false;button.textContent='ลบเรื่องถาวร';const dialog=$('#deleteComplaintDialog');if(!dialog.open)dialog.showModal();window.setTimeout(()=>$('#deleteComplaintReason').focus(),100)}
 function closeDeleteComplaintConfirmation(){const dialog=$('#deleteComplaintDialog');if(dialog.open)dialog.close('cancel');complaintPendingDelete=null;$('#deleteComplaintReason').value='';clear('#deleteComplaintAlert')}
 async function deleteComplaint(){if(!complaintPendingDelete)return;const reason=$('#deleteComplaintReason').value.trim();if(reason.length<4||reason.length>100){show('#deleteComplaintAlert','กรุณาระบุหมายเหตุการลบตั้งแต่ 4 ถึง 100 ตัวอักษร');$('#deleteComplaintReason').focus();return}const pending={...complaintPendingDelete};const button=$('#deleteComplaintConfirmButton');button.disabled=true;button.textContent='กำลังลบ…';clear('#deleteComplaintAlert');try{await api(`/api/admin/complaints/${pending.id}`,{method:'DELETE',body:JSON.stringify({reason})});closeDeleteComplaintConfirmation();closeDetailDrawer();show('#pageAlert',`ลบเรื่อง ${pending.referenceNo} เรียบร้อย`,'success');await refreshScopedData()}catch(error){show('#deleteComplaintAlert',error.message);button.disabled=false;button.textContent='ลบเรื่องถาวร'}}
-async function uploadWorkImages(id){
+async function saveWorkProgress(id){
   const files=[...($('#workImages')?.files||[])];
-  if(!files.length){
-    show('#workImageAlert','อัปโหลดไม่ได้: กรุณาเลือกรูปผลการดำเนินงานอย่างน้อย 1 ภาพ');
-    return;
-  }
   const allowedTypes=new Set(['image/jpeg','image/png','image/webp','image/heic','image/heif']);
   const maxBytes=10*1024*1024;
   const emptyFile=files.find(file=>file.size===0);
@@ -172,28 +169,29 @@ async function uploadWorkImages(id){
     show('#workImageAlert',`อัปโหลดไม่ได้: ไฟล์ “${oversizedFile.name}” มีขนาด ${sizeMb} MB ซึ่งเกินกำหนด 10 MB`);
     return;
   }
-  const button=$('#uploadWorkImagesButton');
+  const button=$('#saveWorkProgressButton');
   clear('#workImageAlert');
   button.disabled=true;
-  button.textContent='กำลังอัปโหลด…';
+  button.textContent='กำลังบันทึกและแจ้ง LINE…';
   try{
     const payload=new FormData();
     files.forEach(file=>payload.append('images',file,file.name));
+    payload.append('status',$('#workStatus').value);
     const note=$('#workImageNote').value.trim();
     if(note)payload.append('note',note);
     const result=await api(`/api/admin/complaints/${id}/work-attachments`,{
       method:'POST',
       body:payload,
     });
-    show('#pageAlert',result.message||'บันทึกรูปผลการดำเนินงานเรียบร้อย','success');
+    show('#pageAlert',result.message||'บันทึกสถานะและแจ้ง LINE เรียบร้อย',result.data?.lineNotified===false?'error':'success');
     await openCase(id);
   }catch(error){
     const reason=error instanceof TypeError
       ?'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่'
       :error.message||'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
-    show('#workImageAlert',reason.startsWith('อัปโหลดไม่สำเร็จ')?reason:`อัปโหลดไม่สำเร็จ: ${reason}`);
+    show('#workImageAlert',reason.startsWith('อัปโหลดไม่สำเร็จ')?reason:`บันทึกไม่สำเร็จ: ${reason}`);
     button.disabled=false;
-    button.textContent='อัปโหลดรูปการดำเนินงาน';
+    button.textContent='บันทึกสถานะและแจ้ง LINE';
   }
 }
 async function assignCase(id){
@@ -226,7 +224,6 @@ async function assignCase(id){
     show('#pageAlert',e.message);
   }
 }
-async function updateStatus(id){try{await api(`/api/admin/complaints/${id}/status`,{method:'PATCH',body:JSON.stringify({status:$('#newStatus').value,note:$('#statusNote').value})});show('#pageAlert','อัปเดตสถานะและส่งแจ้งเตือนเรียบร้อย','success');closeDetailDrawer();await boot()}catch(e){show('#pageAlert',e.message)}}
 function ensureSmartGeoMap(){
   if(smartGeoMap)return smartGeoMap;
   const mapElement=$('#adminComplaintMap');
