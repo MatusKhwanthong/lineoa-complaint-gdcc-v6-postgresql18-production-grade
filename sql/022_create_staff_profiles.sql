@@ -1,7 +1,6 @@
 CREATE TABLE IF NOT EXISTS staff_profiles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name varchar(200) NOT NULL,
-  position_title varchar(200) NOT NULL,
   line_id varchar(100),
   phone varchar(30),
   created_at timestamptz NOT NULL DEFAULT current_timestamp,
