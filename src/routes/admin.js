@@ -1460,6 +1460,7 @@ router.patch('/governance/departments/:id', requireRoles('admin', 'dev'), async 
 const staffProfileSchema = z.object({
   fullName: z.string().trim().min(2).max(200),
   positionTitle: z.string().trim().min(2).max(200),
+  departmentId: z.string().uuid(),
   lineId: z.string().trim().min(1).max(100),
   phone: z.string()
     .trim()
@@ -1471,9 +1472,19 @@ const staffProfileSchema = z.object({
 
 router.get('/governance/staff-profiles', requireRoles('dev'), async (req, res) => {
   const result = await pool.query(
-    `SELECT id, full_name, position_title, line_id, phone, created_at, updated_at
-       FROM staff_profiles
-      ORDER BY full_name`,
+    `SELECT
+        sp.id,
+        sp.full_name,
+        sp.position_title,
+        sp.department_id,
+        sp.line_id,
+        sp.phone,
+        sp.created_at,
+        sp.updated_at,
+        d.name_th AS department_name
+       FROM staff_profiles sp
+       LEFT JOIN departments d ON d.id = sp.department_id
+      ORDER BY sp.full_name`,
   );
   res.json({ success: true, data: result.rows });
 });
@@ -1484,13 +1495,27 @@ router.post('/governance/staff-profiles', requireRoles('dev'), async (req, res) 
     throw new ApiError(400, 'ข้อมูลเจ้าหน้าที่ไม่ถูกต้อง', parsed.error.flatten());
   }
 
+  const departmentResult = await pool.query(
+    `SELECT id FROM departments WHERE id = $1 AND is_active = true`,
+    [parsed.data.departmentId],
+  );
+  if (!departmentResult.rowCount) {
+    throw new ApiError(400, 'ไม่พบหน่วยงาน หรือหน่วยงานถูกปิดใช้งาน');
+  }
+
   let result;
   try {
     result = await pool.query(
-      `INSERT INTO staff_profiles (full_name, position_title, line_id, phone)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, full_name, position_title, line_id, phone, created_at, updated_at`,
-      [parsed.data.fullName, parsed.data.positionTitle, parsed.data.lineId, parsed.data.phone],
+      `INSERT INTO staff_profiles (full_name, position_title, department_id, line_id, phone)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, full_name, position_title, department_id, line_id, phone, created_at, updated_at`,
+      [
+        parsed.data.fullName,
+        parsed.data.positionTitle,
+        parsed.data.departmentId,
+        parsed.data.lineId,
+        parsed.data.phone,
+      ],
     );
   } catch (error) {
     if (error?.code === '23505') {
@@ -1501,6 +1526,7 @@ router.post('/governance/staff-profiles', requireRoles('dev'), async (req, res) 
 
   await writeAudit(req, 'staff_profile.create', 'staff_profile', result.rows[0].id, {
     fullName: parsed.data.fullName,
+    departmentId: parsed.data.departmentId,
   });
   res.status(201).json({ success: true, data: result.rows[0] });
 });
@@ -1514,20 +1540,30 @@ router.patch('/governance/staff-profiles/:id', requireRoles('dev'), async (req, 
     throw new ApiError(400, 'ข้อมูลเจ้าหน้าที่ไม่ถูกต้อง', parsed.error.flatten());
   }
 
+  const departmentResult = await pool.query(
+    `SELECT id FROM departments WHERE id = $1 AND is_active = true`,
+    [parsed.data.departmentId],
+  );
+  if (!departmentResult.rowCount) {
+    throw new ApiError(400, 'ไม่พบหน่วยงาน หรือหน่วยงานถูกปิดใช้งาน');
+  }
+
   let result;
   try {
     result = await pool.query(
       `UPDATE staff_profiles
           SET full_name = $1,
               position_title = $2,
-              line_id = $3,
-              phone = $4,
+              department_id = $3,
+              line_id = $4,
+              phone = $5,
               updated_at = current_timestamp
-        WHERE id = $5
-        RETURNING id, full_name, position_title, line_id, phone, created_at, updated_at`,
+        WHERE id = $6
+        RETURNING id, full_name, position_title, department_id, line_id, phone, created_at, updated_at`,
       [
         parsed.data.fullName,
         parsed.data.positionTitle,
+        parsed.data.departmentId,
         parsed.data.lineId,
         parsed.data.phone,
         idResult.data,
@@ -1543,6 +1579,7 @@ router.patch('/governance/staff-profiles/:id', requireRoles('dev'), async (req, 
   if (!result.rowCount) throw new ApiError(404, 'ไม่พบข้อมูลเจ้าหน้าที่');
   await writeAudit(req, 'staff_profile.update', 'staff_profile', idResult.data, {
     fullName: parsed.data.fullName,
+    departmentId: parsed.data.departmentId,
   });
   res.json({ success: true, data: result.rows[0] });
 });
