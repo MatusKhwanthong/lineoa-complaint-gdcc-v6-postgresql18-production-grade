@@ -440,6 +440,21 @@ input,select,textarea{
   box-shadow:0 9px 20px rgba(91,58,102,.1);
 }
 
+.insight-scroll{
+  max-height:min(62vh,560px);
+  padding-right:.35rem;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  -webkit-overflow-scrolling:touch;
+}
+
+.insight-scroll:focus-visible{
+  outline:3px solid rgba(181,139,211,.35);
+  outline-offset:4px;
+  border-radius:12px;
+}
+
 .metric-name{
   display:flex;
   align-items:center;
@@ -556,6 +571,10 @@ input,select,textarea{
 }
 
 @media(max-width:600px){
+  .insight-scroll{
+    max-height:65svh;
+  }
+
   .insight-metric-item{
     padding:.55rem .6rem .62rem;
   }
