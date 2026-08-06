@@ -96,6 +96,16 @@ function clearAlert() {
   $('#alert').textContent = '';
 }
 
+function restoreLineContactName() {
+  const contactName = $('#contactName');
+  if (!contactName) return;
+
+  const displayName = state.lineProfile?.displayName ||
+    (state.devUserId ? 'ผู้ใช้ทดสอบ' : '');
+
+  if (displayName) contactName.value = displayName;
+}
+
 async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
   const isFormData = options.body instanceof FormData;
@@ -169,7 +179,7 @@ async function initializeLiff() {
     if (config.devBypassLineAuth) {
       state.devUserId = 'dev-user-001';
       setLineStatus('สวัสดี ผู้ใช้ทดสอบ (dev mode)');
-      if (!$('#contactName').value) $('#contactName').value = 'ผู้ใช้ทดสอบ';
+      restoreLineContactName();
       state.initialized = true;
       return true;
     }
@@ -205,7 +215,7 @@ async function initializeLiff() {
     state.lineProfile = profile;
 
     setLineStatus(`สวัสดี ${profile.displayName || 'ผู้ใช้ LINE'}`);
-    if (!$('#contactName').value) $('#contactName').value = profile.displayName || '';
+    restoreLineContactName();
 
     const profileImage = $('#lineProfileImage');
     const fallbackIcon = $('#lineFallbackIcon');
@@ -624,19 +634,13 @@ function createComplaintTimeline(item) {
         imageSection.append(imageHeading);
 
         if (isStaff) {
-          const staffNames = [
-            ...new Set(attachments.map((attachment) => attachment.staffName).filter(Boolean)),
-          ];
           const notes = [
             ...new Set(attachments.map((attachment) => attachment.staffNote).filter(Boolean)),
           ];
-          if (staffNames.length || notes.length) {
+          if (notes.length) {
             const sourceNote = document.createElement('p');
             sourceNote.className = 'attachment-source-note';
-            sourceNote.textContent = [
-              staffNames.length ? `โดย ${staffNames.join(', ')}` : '',
-              notes.length ? `หมายเหตุ: ${notes.join(' • ')}` : '',
-            ].filter(Boolean).join(' — ');
+            sourceNote.textContent = `หมายเหตุ: ${notes.join(' • ')}`;
             imageSection.append(sourceNote);
           }
         }
@@ -1158,6 +1162,7 @@ function setupForm() {
 
   $('#newComplaintButton').addEventListener('click', () => {
     form.reset();
+    restoreLineContactName();
     clearAllFieldErrors();
     clearAlert();
     state.latitude = null;

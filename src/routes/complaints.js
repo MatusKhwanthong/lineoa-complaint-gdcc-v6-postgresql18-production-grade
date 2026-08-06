@@ -143,7 +143,7 @@ router.post('/', uploadComplaintImages, async (req, res) => {
         input.locationText,
         input.latitude,
         input.longitude,
-        input.contactName,
+        req.lineUser.displayName || input.contactName,
         input.contactPhone,
         input.contactEmail,
       ],

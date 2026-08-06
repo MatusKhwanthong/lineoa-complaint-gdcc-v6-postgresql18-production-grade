@@ -19,7 +19,7 @@
       crossorigin="anonymous"
     ></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script type="module" src="/app.js?v=20260803-timeline-images-1"></script>
+    <script type="module" src="/app.js?v=20260806-hide-staff-name-1"></script>
   </head>
   <body class="citizen-v3-body">
     <header class="citizen-header">
@@ -255,7 +255,7 @@
                   <span class="field-label">
                     ชื่อผู้ติดต่อ <span class="required" aria-hidden="true">*</span>
                   </span>
-                  <input id="contactName" maxlength="200" required />
+                  <input id="contactName" maxlength="200" autocomplete="name" readonly required />
                 </label>
                 <label>
                   <span class="field-label">
