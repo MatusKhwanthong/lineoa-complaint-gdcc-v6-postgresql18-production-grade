@@ -1459,6 +1459,7 @@ router.patch('/governance/departments/:id', requireRoles('admin', 'dev'), async 
 
 const staffProfileSchema = z.object({
   fullName: z.string().trim().min(2).max(200),
+  positionTitle: z.string().trim().min(2).max(200),
   lineId: z.string().trim().min(1).max(100),
   phone: z.string()
     .trim()
@@ -1470,7 +1471,7 @@ const staffProfileSchema = z.object({
 
 router.get('/governance/staff-profiles', requireRoles('dev'), async (req, res) => {
   const result = await pool.query(
-    `SELECT id, full_name, line_id, phone, created_at, updated_at
+    `SELECT id, full_name, position_title, line_id, phone, created_at, updated_at
        FROM staff_profiles
       ORDER BY full_name`,
   );
@@ -1486,10 +1487,10 @@ router.post('/governance/staff-profiles', requireRoles('dev'), async (req, res) 
   let result;
   try {
     result = await pool.query(
-      `INSERT INTO staff_profiles (full_name, line_id, phone)
-       VALUES ($1, $2, $3)
-       RETURNING id, full_name, line_id, phone, created_at, updated_at`,
-      [parsed.data.fullName, parsed.data.lineId, parsed.data.phone],
+      `INSERT INTO staff_profiles (full_name, position_title, line_id, phone)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, full_name, position_title, line_id, phone, created_at, updated_at`,
+      [parsed.data.fullName, parsed.data.positionTitle, parsed.data.lineId, parsed.data.phone],
     );
   } catch (error) {
     if (error?.code === '23505') {
@@ -1518,12 +1519,19 @@ router.patch('/governance/staff-profiles/:id', requireRoles('dev'), async (req, 
     result = await pool.query(
       `UPDATE staff_profiles
           SET full_name = $1,
-              line_id = $2,
-              phone = $3,
+              position_title = $2,
+              line_id = $3,
+              phone = $4,
               updated_at = current_timestamp
-        WHERE id = $4
-        RETURNING id, full_name, line_id, phone, created_at, updated_at`,
-      [parsed.data.fullName, parsed.data.lineId, parsed.data.phone, idResult.data],
+        WHERE id = $5
+        RETURNING id, full_name, position_title, line_id, phone, created_at, updated_at`,
+      [
+        parsed.data.fullName,
+        parsed.data.positionTitle,
+        parsed.data.lineId,
+        parsed.data.phone,
+        idResult.data,
+      ],
     );
   } catch (error) {
     if (error?.code === '23505') {
