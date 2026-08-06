@@ -27,7 +27,7 @@ const lineReloginStorageKey = 'lineReloginRequestedAt';
 const lineReloginCooldownMs = 60_000;
 
 function getLineLoginRedirectUri() {
-  return `${window.location.origin}${window.location.pathname}`;
+  return `${window.location.origin}${window.location.pathname}${window.location.search}`;
 }
 
 function requestLineRelogin() {
@@ -814,6 +814,11 @@ function setupTabs() {
   });
 }
 
+function openRequestedTab() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('tab') === 'history') activateTab('historyPanel');
+}
+
 function getGeolocationErrorMessage(error, permissionState = 'unknown') {
   if (permissionState === 'denied' || error?.code === 1) {
     return (
@@ -1197,6 +1202,7 @@ async function main() {
   let lineReady = false;
   try {
     lineReady = await initializeLiff();
+    if (lineReady) openRequestedTab();
   } catch (error) {
     showAlert(error?.message || 'เชื่อมต่อ LINE ไม่สำเร็จ');
   }

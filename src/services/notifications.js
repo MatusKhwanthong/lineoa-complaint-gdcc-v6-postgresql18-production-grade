@@ -1,4 +1,5 @@
 import { pushTextMessage } from './line.js';
+import config from '../config.js';
 
 const statusLabels = {
   new: 'รับเรื่องใหม่',
@@ -15,9 +16,17 @@ export function getStatusLabel(status) {
   return statusLabels[status] || status;
 }
 
+function getComplaintTrackingUrl(referenceNo) {
+  const url = new URL(config.appBaseUrl);
+  url.searchParams.set('tab', 'history');
+  if (referenceNo) url.searchParams.set('reference', referenceNo);
+  return url.toString();
+}
+
 export async function notifyComplaintCreated(complaint) {
   const text = [
     'ระบบได้รับเรื่องร้องเรียนของท่านแล้ว',
+    `ติดตามเรื่อง: ${getComplaintTrackingUrl(complaint.reference_no)}`,
     `เลขรับเรื่อง: ${complaint.reference_no}`,
     `เรื่อง: ${complaint.title}`,
     `สถานะ: ${getStatusLabel(complaint.status)}`,
@@ -36,6 +45,7 @@ export async function notifyComplaintCreated(complaint) {
 export async function notifyStatusChanged(complaint, note) {
   const lines = [
     'สถานะเรื่องร้องเรียนของท่านมีการเปลี่ยนแปลง',
+    `ติดตามเรื่อง: ${getComplaintTrackingUrl(complaint.reference_no)}`,
     `เลขรับเรื่อง: ${complaint.reference_no}`,
     `สถานะ: ${getStatusLabel(complaint.status)}`,
   ];
@@ -54,6 +64,7 @@ export async function notifyStatusChanged(complaint, note) {
 export async function notifyAssignmentChanged(complaint, note) {
   const lines = [
     'เรื่องร้องเรียนของท่านได้รับการมอบหมายแล้ว',
+    `ติดตามเรื่อง: ${getComplaintTrackingUrl(complaint.reference_no)}`,
     `เลขรับเรื่อง: ${complaint.reference_no}`,
     `เรื่อง: ${complaint.title}`,
     'เจ้าหน้าที่ได้ส่งเรื่องให้หน่วยงานที่รับผิดชอบแล้ว',
