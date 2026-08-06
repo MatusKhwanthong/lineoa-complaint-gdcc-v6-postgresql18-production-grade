@@ -1596,6 +1596,48 @@ router.patch('/governance/staff-profiles/:id', requireRoles('dev'), async (req, 
   res.json({ success: true, data: result.rows[0] });
 });
 
+router.delete('/governance/staff-profiles/:id', requireRoles('dev'), async (req, res) => {
+  const idResult = z.string().uuid().safeParse(req.params.id);
+  if (!idResult.success) throw new ApiError(400, 'รหัสข้อมูลเจ้าหน้าที่ไม่ถูกต้อง');
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const profileResult = await client.query(
+      `SELECT id, full_name, position_title, department_id, line_id, phone
+         FROM staff_profiles
+        WHERE id = $1
+        FOR UPDATE`,
+      [idResult.data],
+    );
+    if (!profileResult.rowCount) throw new ApiError(404, 'ไม่พบข้อมูลเจ้าหน้าที่');
+
+    const profile = profileResult.rows[0];
+    await client.query(`DELETE FROM staff_profiles WHERE id = $1`, [idResult.data]);
+    await writeAudit(
+      req,
+      'staff_profile.delete',
+      'staff_profile',
+      idResult.data,
+      {
+        fullName: profile.full_name,
+        positionTitle: profile.position_title,
+        departmentId: profile.department_id,
+        lineId: profile.line_id,
+        phone: profile.phone,
+      },
+      client,
+    );
+    await client.query('COMMIT');
+    res.json({ success: true, message: 'ลบข้อมูลเจ้าหน้าที่เรียบร้อย' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+});
+
 router.get('/governance/users', requireRoles('admin', 'dev'), async (req, res) => {
   const result = await pool.query(
     `SELECT
