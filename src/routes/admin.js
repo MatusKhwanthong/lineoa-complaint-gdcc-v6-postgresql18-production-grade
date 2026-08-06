@@ -1461,13 +1461,25 @@ const staffProfileSchema = z.object({
   fullName: z.string().trim().min(2).max(200),
   positionTitle: z.string().trim().min(2).max(200),
   departmentId: z.string().uuid(),
-  lineId: z.string().trim().min(1).max(100),
-  phone: z.string()
+  lineId: z.preprocess(
+    (value) => (value == null ? '' : value),
+    z.string().trim().max(100).transform((value) => value || null),
+  ),
+  phone: z.preprocess(
+    (value) => (value == null ? '' : value),
+    z.string()
     .trim()
-    .min(9)
     .max(30)
-    .regex(/^[0-9+()\-\s]+$/, 'เบอร์โทรศัพท์ไม่ถูกต้อง')
-    .refine((value) => value.replace(/\D/g, '').length >= 9, 'เบอร์โทรศัพท์ไม่ถูกต้อง'),
+    .refine(
+      (value) => value === '' || /^[0-9+()\-\s]+$/.test(value),
+      'เบอร์โทรศัพท์ไม่ถูกต้อง',
+    )
+    .refine(
+      (value) => value === '' || value.replace(/\D/g, '').length >= 9,
+      'เบอร์โทรศัพท์ไม่ถูกต้อง',
+    )
+    .transform((value) => value || null),
+  ),
 });
 
 router.get('/governance/staff-profiles', requireRoles('dev'), async (req, res) => {
