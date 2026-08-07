@@ -13,6 +13,9 @@ function priorityBadge(priority='normal'){const value=priorityLabels[priority]?p
 function openStreetMapUrl(lat,lng){const latitude=Number(lat).toFixed(6);const longitude=Number(lng).toFixed(6);return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(latitude)}&mlon=${encodeURIComponent(longitude)}#map=18/${encodeURIComponent(latitude)}/${encodeURIComponent(longitude)}`}
 function openAdminImageViewer(src,caption='รูปภาพประกอบ'){const dialog=$('#adminImageViewer');const image=$('#adminImageViewerImage');image.src=src;image.alt=caption;$('#adminImageViewerCaption').textContent=caption;if(!dialog.open)dialog.showModal()}
 function closeDetailDrawer(){$('#detailDrawer').classList.add('hidden');$('#detailDrawerBackdrop').classList.add('hidden')}
+function clearPrintMode(){document.body.classList.remove('printing-complaint-list','printing-complaint-detail')}
+function printComplaintList(){clearPrintMode();const status=$('#statusFilter');const month=$('#complaintMonthFilter');const category=$('#complaintCategoryFilter');const parts=[status.options[status.selectedIndex]?.text,month.options[month.selectedIndex]?.text,category.options[category.selectedIndex]?.text,`พิมพ์เมื่อ ${new Date().toLocaleString('th-TH')}`].filter(Boolean);$('#complaintPrintMeta').textContent=parts.join(' • ');document.body.classList.add('printing-complaint-list');window.print()}
+function printComplaintDetail(){clearPrintMode();document.body.classList.add('printing-complaint-detail');window.print()}
 function isDialogBackdropClick(event,dialog){if(event.target!==dialog)return false;const rect=dialog.getBoundingClientRect();return event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom||event.target===dialog}
 function loginView(){$('#loginPanel').classList.remove('hidden');$('#appShell').classList.add('hidden')}
 function isExecutive(){return ['executive','exclusive'].includes(currentUser?.role)}
@@ -94,6 +97,7 @@ async function loadComplaints(page=1){
   const params=new URLSearchParams({page:String(page),limit:String(pageSize)});
   if($('#statusFilter').value)params.set('status',$('#statusFilter').value);
   if($('#complaintMonthFilter').value)params.set('month',$('#complaintMonthFilter').value);
+  if($('#complaintCategoryFilter').value)params.set('categoryId',$('#complaintCategoryFilter').value);
   if($('#searchInput').value.trim())params.set('search',$('#searchInput').value.trim());
   addExecutiveDepartmentScope(params);
   $('#complaintTable').innerHTML='<p class="muted" style="padding:1rem">กำลังโหลดข้อมูล…</p>';
@@ -103,6 +107,10 @@ async function loadComplaints(page=1){
     const selectedMonth=monthFilter.value;
     monthFilter.innerHTML=`<option value="">ทุกเดือน</option>${(r.filters?.months||[]).map(month=>`<option value="${escapeHtml(month)}">${escapeHtml(mapCaseMonthLabel(month))}</option>`).join('')}`;
     monthFilter.value=selectedMonth;
+    const categoryFilter=$('#complaintCategoryFilter');
+    const selectedCategory=categoryFilter.value;
+    categoryFilter.innerHTML=`<option value="">ทุกหมวดหมู่</option>${(r.filters?.categories||[]).map(category=>`<option value="${escapeHtml(category.id)}">${escapeHtml(category.name)}</option>`).join('')}`;
+    categoryFilter.value=selectedCategory;
     $('#complaintTable').innerHTML=tableHtml(r.data,false,true);
     document.querySelectorAll('.view-case').forEach(b=>b.onclick=()=>openCase(b.dataset.id));
     renderPagination(r.pagination);
@@ -541,6 +549,10 @@ function closeGovernanceDialog(){
 }
 
 $('#addStaffProfileButton').onclick=()=>{if(currentUser?.role==='dev')openGovernanceDialog('staffProfile')};
+$('#printComplaintListButton').onclick=printComplaintList;
+$('#printComplaintDetailButton').onclick=printComplaintDetail;
+$('#complaintCategoryFilter').onchange=()=>loadComplaints(1);
+window.addEventListener('afterprint',clearPrintMode);
 $('#loginForm').onsubmit=async e=>{e.preventDefault();clear('#adminAlert');try{const r=await api('/api/admin/login',{method:'POST',body:JSON.stringify({username:$('#username').value,password:$('#password').value})});token=r.data.token;sessionStorage.setItem('adminToken',token);appView(r.data.user);await boot()}catch(err){show('#adminAlert',err.message)}};
 const adminImageViewer=$('#adminImageViewer');$('#adminImageViewerClose').onclick=()=>adminImageViewer.close();adminImageViewer.addEventListener('click',event=>{if(isDialogBackdropClick(event,adminImageViewer))adminImageViewer.close()});adminImageViewer.addEventListener('close',()=>$('#adminImageViewerImage').removeAttribute('src'));
 const logoutConfirmDialog=$('#logoutConfirmDialog');const deleteComplaintDialog=$('#deleteComplaintDialog');$('#logoutButton').onclick=openLogoutConfirmation;$('#mobileLogoutButton').onclick=openLogoutConfirmation;$('#logoutCancelButton').onclick=closeLogoutConfirmation;$('#logoutConfirmButton').onclick=confirmLogout;logoutConfirmDialog.addEventListener('cancel',e=>{e.preventDefault();closeLogoutConfirmation()});logoutConfirmDialog.addEventListener('click',e=>{if(isDialogBackdropClick(e,logoutConfirmDialog))closeLogoutConfirmation()});$('#deleteComplaintCancelButton').onclick=closeDeleteComplaintConfirmation;$('#deleteComplaintConfirmButton').onclick=deleteComplaint;deleteComplaintDialog.addEventListener('cancel',e=>{e.preventDefault();closeDeleteComplaintConfirmation()});deleteComplaintDialog.addEventListener('click',e=>{if(isDialogBackdropClick(e,deleteComplaintDialog))closeDeleteComplaintConfirmation()});$('#closeDrawer').onclick=closeDetailDrawer;$('#detailDrawerBackdrop').onclick=closeDetailDrawer;$('#governanceCancelButton').onclick=closeGovernanceDialog;$('#governanceCloseButton').onclick=closeGovernanceDialog;$('#governanceDialog').addEventListener('cancel',e=>{e.preventDefault();closeGovernanceDialog()});$('#governanceDialog').addEventListener('click',e=>{if(isDialogBackdropClick(e,$('#governanceDialog')))closeGovernanceDialog()});$('#searchButton').onclick=()=>loadComplaints(1);$('#statusFilter').onchange=()=>loadComplaints(1);$('#complaintMonthFilter').onchange=()=>loadComplaints(1);$('#complaintPageSize').onchange=()=>loadComplaints(1);$('#searchInput').onkeydown=e=>{if(e.key==='Enter')loadComplaints(1)};$('#refreshAll').onclick=async()=>{try{await refreshScopedData()}catch(err){show('#pageAlert',err.message)}};$('#executiveDepartmentFilter').onchange=async e=>{executiveDepartmentId=e.target.value;try{await refreshScopedData()}catch(err){show('#pageAlert',err.message)}};document.querySelectorAll('.v3-nav-item').forEach(b=>b.onclick=()=>switchView(b.dataset.view));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>switchView(b.dataset.go));document.querySelectorAll('.governance-tab').forEach(b=>b.onclick=()=>loadGovernance(b.dataset.governance));$('#addCategoryButton').onclick=()=>{if(isSystemAdmin())openGovernanceDialog('category')};$('#addDepartmentButton').onclick=()=>{if(isSystemAdmin())openGovernanceDialog('department')};$('#addUserButton').onclick=()=>{if(isSystemAdmin())openGovernanceDialog('user')};$('#refreshAuditButton').onclick=()=>loadGovernance('audit');$('#governanceForm').onsubmit=async e=>{e.preventDefault();try{await saveGovernance()}catch(err){show('#pageAlert',err.message)}};$('#exportCsvButton').onclick=async()=>{try{await exportCsv()}catch(err){show('#pageAlert',err.message)}};loadMe();

@@ -173,6 +173,7 @@ router.get('/complaints', async (req, res) => {
     status: z.string().optional(),
     search: z.string().max(200).optional(),
     month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),
+    categoryId: z.string().uuid().optional(),
     departmentId: z.string().uuid().optional(),
     mine: z.coerce.boolean().optional(),
     page: z.coerce.number().int().min(1).default(1),
@@ -184,7 +185,7 @@ router.get('/complaints', async (req, res) => {
     throw new ApiError(400, 'ตัวกรองไม่ถูกต้อง');
   }
 
-  const { status, search, month, departmentId: requestedDepartmentId, mine, page, limit } = parsed.data;
+  const { status, search, month, categoryId, departmentId: requestedDepartmentId, mine, page, limit } = parsed.data;
   const conditions = [];
   const values = [];
 
@@ -207,14 +208,24 @@ router.get('/complaints', async (req, res) => {
   const monthScopeWhere = conditions.length
     ? `WHERE ${conditions.join(' AND ')}`
     : '';
-  const monthResult = await pool.query(
-    `SELECT to_char(date_trunc('month', c.created_at), 'YYYY-MM') AS value
-       FROM complaints c
-       ${monthScopeWhere}
-      GROUP BY date_trunc('month', c.created_at)
-      ORDER BY date_trunc('month', c.created_at) DESC`,
-    values,
-  );
+  const [monthResult, categoryResult] = await Promise.all([
+    pool.query(
+      `SELECT to_char(date_trunc('month', c.created_at), 'YYYY-MM') AS value
+         FROM complaints c
+         ${monthScopeWhere}
+        GROUP BY date_trunc('month', c.created_at)
+        ORDER BY date_trunc('month', c.created_at) DESC`,
+      values,
+    ),
+    pool.query(
+      `SELECT DISTINCT cc.id, cc.name_th AS name
+         FROM complaints c
+         JOIN complaint_categories cc ON cc.id = c.category_id
+         ${monthScopeWhere}
+        ORDER BY cc.name_th`,
+      values,
+    ),
+  ]);
 
   if (status) {
     values.push(status);
@@ -227,6 +238,11 @@ router.get('/complaints', async (req, res) => {
       `c.created_at >= $${values.length}::date
        AND c.created_at < ($${values.length}::date + interval '1 month')`,
     );
+  }
+
+  if (categoryId) {
+    values.push(categoryId);
+    conditions.push(`c.category_id = $${values.length}`);
   }
 
   // ?mine=true = ดูเฉพาะเรื่องที่ตัวเองถูกมอบหมาย (ใช้ได้ทุก role,
@@ -337,6 +353,7 @@ router.get('/complaints', async (req, res) => {
     },
     filters: {
       months: monthResult.rows.map((row) => row.value),
+      categories: categoryResult.rows,
     },
   });
 });

@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#083f3a" />
     <title>Smart City Complaint Command Center</title>
     <link rel="stylesheet" href="/styles.css?v=20260727-image-viewer-1" />
-    <link rel="stylesheet" href="/admin-v3.css?v=20260806-work-phases-1" />
+    <link rel="stylesheet" href="/admin-v3.css?v=20260807-category-filter-1" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +19,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin="anonymous"
     ></script>
-    <script type="module" src="/admin.js?v=20260806-staff-department-1"></script>
+    <script type="module" src="/admin.js?v=20260807-category-filter-1"></script>
   </head>
   <body class="admin-v3-body">
     <section id="loginPanel" class="v3-login">
@@ -254,6 +254,10 @@
         </section>
 
         <section id="complaintsView" class="admin-view hidden">
+          <header class="complaint-print-header" aria-hidden="true">
+            <h1>รายการเรื่องร้องเรียน</h1>
+            <p id="complaintPrintMeta"></p>
+          </header>
           <article class="v3-card complaint-center-card">
             <div class="complaint-toolbar">
               <div class="search-box">
@@ -274,6 +278,9 @@
               <select id="complaintMonthFilter" aria-label="เลือกเดือนของเรื่องร้องเรียน">
                 <option value="">ทุกเดือน</option>
               </select>
+              <select id="complaintCategoryFilter" aria-label="เลือกหมวดหมู่ของเรื่องร้องเรียน">
+                <option value="">ทุกหมวดหมู่</option>
+              </select>
               <select id="complaintPageSize" aria-label="เลือกจำนวนรายการที่แสดงต่อหน้า">
                 <option value="10">แสดง 10 รายการ</option>
                 <option value="20" selected>แสดง 20 รายการ</option>
@@ -282,6 +289,9 @@
               </select>
               <button id="searchButton" class="v3-primary" type="button">
                 ค้นหา
+              </button>
+              <button id="printComplaintListButton" class="complaint-print-button" type="button">
+                <span aria-hidden="true">⎙</span> พิมพ์รายการ
               </button>
             </div>
             <div id="complaintTable"></div>
@@ -503,7 +513,12 @@
             <p class="overline">CASE INTELLIGENCE</p>
             <h2 id="drawerReference">-</h2>
           </div>
-          <button id="closeDrawer" class="v3-close" type="button">×</button>
+          <div class="drawer-top-actions">
+            <button id="printComplaintDetailButton" class="complaint-print-button" type="button">
+              <span aria-hidden="true">⎙</span> พิมพ์
+            </button>
+            <button id="closeDrawer" class="v3-close" type="button">×</button>
+          </div>
         </div>
         <div id="drawerContent" class="drawer-content"></div>
       </aside>

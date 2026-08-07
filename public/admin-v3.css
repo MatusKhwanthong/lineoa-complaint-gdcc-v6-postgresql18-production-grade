@@ -2292,6 +2292,52 @@ button[aria-disabled="true"],
   }
 }
 
+/* Complaint printing */
+.complaint-print-header{display:none}
+.complaint-print-button{display:inline-flex;min-height:44px;align-items:center;justify-content:center;gap:.4rem;padding:.7rem .9rem;border:1px solid #d8c3e5;border-radius:13px;color:#654574;background:#f7f0fa;font-weight:900;cursor:pointer}
+.drawer-top-actions{display:flex;align-items:center;gap:.55rem}
+.complaint-toolbar{grid-template-columns:minmax(250px,1fr) 155px 155px 180px 155px auto auto}
+@media(max-width:1280px){.complaint-toolbar{grid-template-columns:minmax(240px,1fr) repeat(3,minmax(150px,1fr))}}
+@media(max-width:900px){.complaint-toolbar{grid-template-columns:1fr}}
+
+@media print{
+  @page{size:A4;margin:12mm}
+  body.printing-complaint-list,body.printing-complaint-detail{color:#111!important;background:#fff!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+  body.printing-complaint-list .v3-sidebar,
+  body.printing-complaint-list .v3-header,
+  body.printing-complaint-list .admin-view:not(#complaintsView),
+  body.printing-complaint-list .complaint-toolbar,
+  body.printing-complaint-list .v3-pagination,
+  body.printing-complaint-list #detailDrawer,
+  body.printing-complaint-list #detailDrawerBackdrop{display:none!important}
+  body.printing-complaint-list .v3-shell{display:block!important}
+  body.printing-complaint-list .v3-main{padding:0!important}
+  body.printing-complaint-list #complaintsView,
+  body.printing-complaint-list .complaint-print-header{display:block!important}
+  body.printing-complaint-list .complaint-print-header{margin-bottom:12px;border-bottom:2px solid #765486}
+  body.printing-complaint-list .complaint-print-header h1{margin:0 0 4px;font-size:20px}
+  body.printing-complaint-list .complaint-print-header p{margin:0 0 10px;color:#555;font-size:11px}
+  body.printing-complaint-list .complaint-center-card{border:0!important;box-shadow:none!important}
+  body.printing-complaint-list .table-wrap{overflow:visible!important}
+  body.printing-complaint-list .v3-table{min-width:0!important;table-layout:auto}
+  body.printing-complaint-list .v3-table th,
+  body.printing-complaint-list .v3-table td{padding:6px 4px;color:#111!important;font-size:9px}
+  body.printing-complaint-list .v3-table th:last-child,
+  body.printing-complaint-list .v3-table td:last-child{display:none!important}
+  body.printing-complaint-detail .v3-shell>*:not(#detailDrawer),
+  body.printing-complaint-detail #detailDrawerBackdrop{display:none!important}
+  body.printing-complaint-detail #detailDrawer{position:static!important;display:block!important;width:100%!important;padding:0!important;overflow:visible!important;box-shadow:none!important}
+  body.printing-complaint-detail .drawer-top-actions,
+  body.printing-complaint-detail .drawer-form,
+  body.printing-complaint-detail .complaint-danger-zone,
+  body.printing-complaint-detail .map-link-button{display:none!important}
+  body.printing-complaint-detail .drawer-content{gap:8px}
+  body.printing-complaint-detail .drawer-hero,
+  body.printing-complaint-detail .drawer-field,
+  body.printing-complaint-detail .drawer-section{break-inside:avoid;box-shadow:none!important}
+  body.printing-complaint-detail .drawer-images{grid-template-columns:repeat(4,1fr)}
+}
+
 @media(max-width:420px){
   .logout-confirm-actions{
     grid-template-columns:1fr;
