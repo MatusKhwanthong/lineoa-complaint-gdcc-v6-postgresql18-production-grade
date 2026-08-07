@@ -977,17 +977,25 @@ function setupLocation() {
 }
 
 const complaintRequiredFields = [
-  { selector: '#categoryId', message: 'กรุณาเลือกหมวดหมู่' },
-  { selector: '#title', message: 'กรุณากรอกหัวข้อ' },
+  { selector: '#categoryId', label: 'หมวดหมู่', message: 'กรุณาเลือกหมวดหมู่' },
+  { selector: '#title', label: 'หัวข้อ', message: 'กรุณากรอกหัวข้อ' },
   {
     selector: '#images',
+    label: 'รูปภาพประกอบ',
     message: 'กรุณาแนบรูปภาพอย่างน้อย 1 ภาพ',
     validate: (element) => Boolean(element.files?.length),
   },
-  { selector: '#contactName', message: 'กรุณากรอกชื่อผู้ติดต่อ' },
+  {
+    selector: '#contactName',
+    label: 'ชื่อผู้ติดต่อ',
+    message: 'ไม่พบชื่อผู้ติดต่อจากบัญชี LINE กรุณาเข้าสู่ระบบใหม่',
+  },
   {
     selector: '#contactPhone',
-    message: 'กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง',
+    label: 'เบอร์โทรศัพท์',
+    message: (element) => element.value.trim()
+      ? 'กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง 9–10 หลัก'
+      : 'กรุณากรอกเบอร์โทรศัพท์',
     validate: (element) => {
       const phone = element.value.replace(/\D/g, '');
       return phone.length >= 9 && phone.length <= 10;
@@ -995,6 +1003,7 @@ const complaintRequiredFields = [
   },
   {
     selector: '#privacyConsent',
+    label: 'การยอมรับประกาศความเป็นส่วนตัว',
     message: 'กรุณายอมรับประกาศความเป็นส่วนตัว',
     validate: (element) => element.checked,
   },
@@ -1048,7 +1057,7 @@ function isRequiredFieldValid(field, element) {
 
 function validateComplaintForm() {
   let firstInvalid = null;
-  let invalidCount = 0;
+  const invalidLabels = [];
 
   for (const field of complaintRequiredFields) {
     const element = $(field.selector);
@@ -1057,14 +1066,17 @@ function validateComplaintForm() {
     removeFieldError(element);
     if (isRequiredFieldValid(field, element)) continue;
 
-    invalidCount += 1;
-    showFieldError(element, field.message);
+    invalidLabels.push(field.label);
+    const message = typeof field.message === 'function'
+      ? field.message(element)
+      : field.message;
+    showFieldError(element, message);
     firstInvalid ||= element;
   }
 
   if (!firstInvalid) return true;
 
-  showAlert(`กรุณากรอกข้อมูลให้ครบถ้วน ยังขาด ${invalidCount} รายการ`);
+  showAlert(`กรุณาตรวจสอบข้อมูลที่ยังไม่ครบ: ${invalidLabels.join(', ')}`);
   const scrollTarget = getFieldErrorContainer(firstInvalid) || firstInvalid;
   scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
   window.setTimeout(() => firstInvalid.focus({ preventScroll: true }), 350);
