@@ -452,6 +452,42 @@ input,select,textarea{
   background:#fff7f7!important;
 }
 
+/* Separate mobile camera and gallery choices. */
+.image-source-actions{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:.8rem;
+}
+
+.image-source-actions .file-picker{
+  min-height:135px;
+  padding:1rem;
+}
+
+.image-source-camera{
+  border-style:solid;
+}
+
+@media(max-width:650px){
+  .image-source-actions{
+    grid-template-columns:1fr 1fr;
+    gap:.6rem;
+  }
+
+  .image-source-actions .file-picker{
+    min-height:120px;
+    padding:.8rem .45rem;
+  }
+
+  .image-source-actions .file-picker b{
+    font-size:.9rem;
+  }
+
+  .image-source-actions .file-picker small{
+    font-size:.7rem;
+  }
+}
+
 .field-error{
   display:block;
   width:100%;

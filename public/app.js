@@ -7,6 +7,7 @@ const state = {
   mapMarker: null,
   maxUploadFiles: 5,
   maxFileMb: 10,
+  selectedUploadFiles: [],
   previewUrls: [],
   lineProfile: null,
 };
@@ -423,25 +424,15 @@ function clearImagePreviews() {
   $('#imagePreview').replaceChildren();
 }
 
+function getUploadFileKey(file) {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
 function renderSelectedImages() {
   clearAlert();
   clearImagePreviews();
 
-  const files = [...$('#images').files];
-  if (files.length > state.maxUploadFiles) {
-    $('#images').value = '';
-    showAlert(`แนบรูปภาพได้ไม่เกิน ${state.maxUploadFiles} ภาพ`);
-    return;
-  }
-
-  for (const file of files) {
-    if (file.size > state.maxFileMb * 1024 * 1024) {
-      $('#images').value = '';
-      clearImagePreviews();
-      showAlert(`ไฟล์ “${file.name}” ต้องไม่เกิน ${state.maxFileMb} MB`);
-      return;
-    }
-
+  for (const file of state.selectedUploadFiles) {
     const url = URL.createObjectURL(file);
     state.previewUrls.push(url);
 
@@ -467,6 +458,33 @@ function renderSelectedImages() {
     figure.append(image, caption);
     $('#imagePreview').append(figure);
   }
+}
+
+function addSelectedImages(input) {
+  const incomingFiles = [...input.files];
+  input.value = '';
+  if (!incomingFiles.length) return;
+
+  const existingKeys = new Set(state.selectedUploadFiles.map(getUploadFileKey));
+  const newFiles = incomingFiles.filter((file) => !existingKeys.has(getUploadFileKey(file)));
+  const combinedFiles = [...state.selectedUploadFiles, ...newFiles];
+
+  if (combinedFiles.length > state.maxUploadFiles) {
+    showAlert(`แนบรูปภาพได้ไม่เกิน ${state.maxUploadFiles} ภาพ (เลือกไว้แล้ว ${state.selectedUploadFiles.length} ภาพ)`);
+    return;
+  }
+
+  const oversizedFile = newFiles.find(
+    (file) => file.size > state.maxFileMb * 1024 * 1024,
+  );
+  if (oversizedFile) {
+    showAlert(`ไฟล์ “${oversizedFile.name}” ต้องไม่เกิน ${state.maxFileMb} MB`);
+    return;
+  }
+
+  state.selectedUploadFiles = combinedFiles;
+  renderSelectedImages();
+  removeFieldError($('#images'));
 }
 
 async function loadProtectedGallery(container, attachments, urlBuilder, authToken) {
@@ -983,7 +1001,7 @@ const complaintRequiredFields = [
     selector: '#images',
     label: 'รูปภาพประกอบ',
     message: 'กรุณาแนบรูปภาพอย่างน้อย 1 ภาพ',
-    validate: (element) => Boolean(element.files?.length),
+    validate: () => state.selectedUploadFiles.length > 0,
   },
   {
     selector: '#contactName',
@@ -1113,7 +1131,8 @@ function setupForm() {
   const form = $('#complaintForm');
   const submitButton = $('#submitButton');
 
-  $('#images').addEventListener('change', renderSelectedImages);
+  $('#images').addEventListener('change', (event) => addSelectedImages(event.currentTarget));
+  $('#cameraImages').addEventListener('change', (event) => addSelectedImages(event.currentTarget));
   setupLiveFieldValidation();
 
   form.addEventListener('submit', async (event) => {
@@ -1145,7 +1164,7 @@ function setupForm() {
       state.longitude = null;
     }
 
-    const selectedFiles = [...$('#images').files];
+    const selectedFiles = [...state.selectedUploadFiles];
 
     submitButton.disabled = true;
     submitButton.textContent = 'กำลังอัปโหลดและส่งข้อมูล…';
@@ -1190,6 +1209,7 @@ function setupForm() {
     clearAlert();
     state.latitude = null;
     state.longitude = null;
+    state.selectedUploadFiles = [];
     clearImagePreviews();
     $('#locationStatus').textContent = 'ยังไม่ได้บันทึกพิกัด';
     $('#mapPanel').classList.add('hidden');
