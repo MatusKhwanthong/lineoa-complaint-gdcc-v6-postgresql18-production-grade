@@ -549,6 +549,16 @@ function closeGovernanceDialog(){
 }
 
 $('#addStaffProfileButton').onclick=()=>{if(currentUser?.role==='dev')openGovernanceDialog('staffProfile')};
+const lockedGovernanceDialog=$('#governanceDialog');
+lockedGovernanceDialog.addEventListener('cancel',event=>{
+  event.preventDefault();
+  event.stopImmediatePropagation();
+},true);
+lockedGovernanceDialog.addEventListener('click',event=>{
+  if(!isDialogBackdropClick(event,lockedGovernanceDialog))return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+},true);
 $('#printComplaintListButton').onclick=printComplaintList;
 $('#printComplaintDetailButton').onclick=printComplaintDetail;
 $('#complaintCategoryFilter').onchange=()=>loadComplaints(1);
