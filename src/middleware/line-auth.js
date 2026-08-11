@@ -5,15 +5,13 @@ import { verifyLineIdToken } from '../services/line.js';
 export async function requireLineUser(req, res, next) {
   try {
     if (config.devBypassLineAuth) {
-      const devUserId = req.get('x-dev-user-id');
-      if (devUserId) {
-        req.lineUser = {
-          userId: devUserId,
-          displayName: req.get('x-dev-display-name') || 'ผู้ใช้ทดสอบ',
-          pictureUrl: null,
-        };
-        return next();
-      }
+      req.lineUser = {
+        userId: null,
+        displayName: null,
+        pictureUrl: null,
+        isDevBypass: true,
+      };
+      return next();
     }
 
     const authorization = req.get('authorization') || '';
@@ -29,6 +27,7 @@ export async function requireLineUser(req, res, next) {
       userId: profile.sub,
       displayName: profile.name || null,
       pictureUrl: profile.picture || null,
+      isDevBypass: false,
     };
 
     return next();

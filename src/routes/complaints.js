@@ -89,24 +89,28 @@ router.post('/', uploadComplaintImages, async (req, res) => {
       sequenceResult.rows[0].sequence_value,
     );
 
-    const lineUserResult = await client.query(
-      `INSERT INTO line_users (
-          line_user_id,
-          display_name,
-          picture_url,
-          updated_at
-       ) VALUES ($1, $2, $3, current_timestamp)
-       ON CONFLICT (line_user_id) DO UPDATE
-       SET display_name = COALESCE(EXCLUDED.display_name, line_users.display_name),
-           picture_url = COALESCE(EXCLUDED.picture_url, line_users.picture_url),
-           updated_at = current_timestamp
-       RETURNING id`,
-      [
-        req.lineUser.userId,
-        req.lineUser.displayName,
-        req.lineUser.pictureUrl,
-      ],
-    );
+    let lineUserRecordId = null;
+    if (req.lineUser.userId) {
+      const lineUserResult = await client.query(
+        `INSERT INTO line_users (
+            line_user_id,
+            display_name,
+            picture_url,
+            updated_at
+         ) VALUES ($1, $2, $3, current_timestamp)
+         ON CONFLICT (line_user_id) DO UPDATE
+         SET display_name = COALESCE(EXCLUDED.display_name, line_users.display_name),
+             picture_url = COALESCE(EXCLUDED.picture_url, line_users.picture_url),
+             updated_at = current_timestamp
+         RETURNING id`,
+        [
+          req.lineUser.userId,
+          req.lineUser.displayName,
+          req.lineUser.pictureUrl,
+        ],
+      );
+      lineUserRecordId = lineUserResult.rows[0].id;
+    }
 
     const result = await client.query(
       `INSERT INTO complaints (
@@ -135,7 +139,7 @@ router.post('/', uploadComplaintImages, async (req, res) => {
         referenceNo,
         req.lineUser.userId,
         req.lineUser.displayName,
-        lineUserResult.rows[0].id,
+        lineUserRecordId,
         category.id,
         category.department_id,
         input.title,
@@ -185,7 +189,9 @@ router.post('/', uploadComplaintImages, async (req, res) => {
       [
         complaint.id,
         complaint.status,
-        `สร้างเรื่องร้องเรียนผ่าน LINE OA พร้อมรูปภาพ ${storedImages.length} ภาพ`,
+        req.lineUser.isDevBypass
+          ? `สร้างเรื่องร้องเรียนผ่านโหมดทดสอบ Local พร้อมรูปภาพ ${storedImages.length} ภาพ`
+          : `สร้างเรื่องร้องเรียนผ่าน LINE OA พร้อมรูปภาพ ${storedImages.length} ภาพ`,
         req.lineUser.userId,
       ],
     );
@@ -205,7 +211,9 @@ router.post('/', uploadComplaintImages, async (req, res) => {
     client?.release();
   }
 
-  await notifyComplaintCreated(complaint);
+  if (complaint.line_user_id) {
+    await notifyComplaintCreated(complaint);
+  }
 
   res.status(201).json({
     success: true,
@@ -282,7 +290,7 @@ router.get('/', async (req, res) => {
        JOIN complaint_categories cc ON cc.id = c.category_id
        LEFT JOIN departments d ON d.id = c.department_id
        LEFT JOIN staff_profiles asp ON asp.id = c.assigned_staff_profile_id
-      WHERE c.line_user_id = $1
+      WHERE (($1::varchar IS NULL AND c.line_user_id IS NULL) OR c.line_user_id = $1)
       ORDER BY c.created_at DESC
       LIMIT 100`,
     [req.lineUser.userId],
@@ -303,7 +311,7 @@ router.get('/:referenceNo/attachments/:attachmentId', async (req, res) => {
        JOIN complaints c ON c.id = a.complaint_id
       WHERE a.id = $1
         AND c.reference_no = $2
-        AND c.line_user_id = $3`,
+        AND (($3::varchar IS NULL AND c.line_user_id IS NULL) OR c.line_user_id = $3)`,
     [
       req.params.attachmentId,
       req.params.referenceNo,
@@ -365,7 +373,7 @@ router.get('/:referenceNo', async (req, res) => {
        LEFT JOIN departments d ON d.id = c.department_id
        LEFT JOIN staff_profiles asp ON asp.id = c.assigned_staff_profile_id
       WHERE c.reference_no = $1
-        AND c.line_user_id = $2`,
+        AND (($2::varchar IS NULL AND c.line_user_id IS NULL) OR c.line_user_id = $2)`,
     [req.params.referenceNo, req.lineUser.userId],
   );
 

@@ -951,7 +951,6 @@ router.get('/dashboard', async (req, res) => {
         ${scopeByDepartment ? 'AND cc.department_id = $1' : ''}
       GROUP BY cc.id, cc.name_th, cc.sort_order
       ORDER BY value DESC, cc.sort_order
-      LIMIT 8
       `,
       values,
     ),
