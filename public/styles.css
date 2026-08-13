@@ -468,6 +468,14 @@ input,select,textarea{
   border-style:solid;
 }
 
+.gallery-icon{
+  display:block;
+  width:45px;
+  height:45px;
+  margin-bottom:.6rem;
+  object-fit:contain;
+}
+
 @media(max-width:650px){
   .image-source-actions{
     grid-template-columns:1fr 1fr;
@@ -485,6 +493,11 @@ input,select,textarea{
 
   .image-source-actions .file-picker small{
     font-size:.7rem;
+  }
+
+  .gallery-icon{
+    width:40px;
+    height:40px;
   }
 }
 
