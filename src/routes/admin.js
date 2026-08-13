@@ -19,6 +19,7 @@ import {
   sendStoredImage,
   uploadStaffWorkImages,
 } from '../services/uploads.js';
+import { escapeCsvField, toExcelText } from '../utils/csv.js';
 
 const router = Router();
 
@@ -951,7 +952,6 @@ router.get('/dashboard', async (req, res) => {
         ${scopeByDepartment ? 'AND cc.department_id = $1' : ''}
       GROUP BY cc.id, cc.name_th, cc.sort_order
       ORDER BY value DESC, cc.sort_order
-      LIMIT 8
       `,
       values,
     ),
@@ -2189,8 +2189,7 @@ router.get('/reports/export.csv', requireRoles('admin', 'dev', 'supervisor', 'ex
 
   const result=await pool.query(`SELECT c.reference_no,c.title,cc.name_th AS category,c.status,c.priority,c.contact_name,c.contact_phone,c.location_text,d.name_th AS department,su.display_name AS assigned_staff,c.created_at,c.due_at,c.completed_at FROM complaints c JOIN complaint_categories cc ON cc.id=c.category_id LEFT JOIN departments d ON d.id=c.department_id LEFT JOIN staff_users su ON su.id=c.assigned_staff_user_id ${where} ORDER BY c.created_at DESC`, values);
   const headers=['reference_no','title','category','status','priority','contact_name','contact_phone','location_text','department','assigned_staff','created_at','due_at','completed_at'];
-  const esc=v=>'"'+String(v??'').replaceAll('"','""')+'"';
-  const csv='\ufeff'+[headers.join(','),...result.rows.map(r=>headers.map(h=>esc(r[h])).join(','))].join('\n');
+  const csv='\ufeff'+[headers.join(','),...result.rows.map(r=>headers.map(h=>escapeCsvField(h==='contact_phone'?toExcelText(r[h]):r[h])).join(','))].join('\n');
   await writeAudit(req,'report.export.csv','report',null,{rows:result.rowCount});
   res.setHeader('content-type','text/csv; charset=utf-8'); res.setHeader('content-disposition','attachment; filename="complaints-report.csv"'); res.send(csv);
 });

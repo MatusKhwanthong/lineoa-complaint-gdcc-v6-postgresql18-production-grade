@@ -19,7 +19,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin="anonymous"
     ></script>
-    <script type="module" src="/admin.js?v=20260807-category-filter-1"></script>
+    <script type="module" src="/admin.js?v=20260810-top-category-pages-1"></script>
   </head>
   <body class="admin-v3-body">
     <section id="loginPanel" class="v3-login">
@@ -113,7 +113,11 @@
           <div><b>ระบบออนไลน์</b><small>API & Database ปกติ</small></div>
         </div>
         <div class="v3-user">
-          <div class="v3-avatar">ส</div>
+          <div class="v3-avatar"><img
+            class="human-logo"
+            src="./assets/user-tranparent.png"
+            alt="เจ้าหน้าที่"
+          /></div>
           <div>
             <b id="staffName">เจ้าหน้าที่</b><small id="staffRole">staff</small>
           </div>
@@ -219,6 +223,7 @@
                 </div>
               </div>
               <div id="categoryBars" class="metric-bars"></div>
+              <div id="topCategoryPagination" class="insight-pagination" aria-label="หน้าประเภทเรื่องที่พบมาก"></div>
             </article>
             <article id="topUserDepartmentsCard" class="v3-card category-card hidden">
               <div class="v3-card-head">

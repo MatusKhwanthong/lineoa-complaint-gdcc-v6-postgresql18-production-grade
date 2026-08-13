@@ -69,6 +69,26 @@ try {
       continue;
     }
 
+    // Migration 013 already removes these seed accounts on fresh installs.
+    // In that case, 016 has no references to transfer and must not require an
+    // administrator account before the documented admin:create step.
+    if (filename === '016_remove_engineering_seed_users_v3.sql') {
+      const seedUsers = await pool.query(
+        `SELECT count(*)::integer AS total
+           FROM staff_users
+          WHERE username IN ('super_engineer', 'officer_engineer')`,
+      );
+
+      if (seedUsers.rows[0].total === 0) {
+        await pool.query(
+          `INSERT INTO schema_migrations (filename, checksum) VALUES ($1, $2)`,
+          [filename, checksum],
+        );
+        console.log(`Skipping ${filename}; seed users are already absent.`);
+        continue;
+      }
+    }
+
     console.log(`Running ${filename}...`);
     await pool.query(sql);
     await pool.query(

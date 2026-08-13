@@ -10,6 +10,7 @@ const state = {
   selectedUploadFiles: [],
   previewUrls: [],
   lineProfile: null,
+  devBypassLineAuth: false,
 };
 
 const statusLabels = {
@@ -32,7 +33,7 @@ function getLineLoginRedirectUri() {
 }
 
 function requestLineRelogin() {
-  if (state.devUserId || !window.liff?.login) return false;
+  if (state.devBypassLineAuth || !window.liff?.login) return false;
 
   const now = Date.now();
   const lastRequestedAt = Number(sessionStorage.getItem(lineReloginStorageKey) || 0);
@@ -101,8 +102,7 @@ function restoreLineContactName() {
   const contactName = $('#contactName');
   if (!contactName) return;
 
-  const displayName = state.lineProfile?.displayName ||
-    (state.devUserId ? 'ผู้ใช้ทดสอบ' : '');
+  const displayName = state.lineProfile?.displayName || '';
 
   if (displayName) contactName.value = displayName;
 }
@@ -112,10 +112,7 @@ async function api(path, options = {}) {
   const isFormData = options.body instanceof FormData;
 
   if (!isFormData) headers.set('content-type', 'application/json');
-  if (state.devUserId) {
-    headers.set('x-dev-user-id', state.devUserId);
-    headers.set('x-dev-display-name', 'Test User');
-  } else if (state.idToken) {
+  if (state.idToken) {
     headers.set('authorization', `Bearer ${state.idToken}`);
   }
 
@@ -131,7 +128,7 @@ async function api(path, options = {}) {
         ? result.message
         : `เกิดข้อผิดพลาด ${response.status}`;
 
-    if (response.status === 401 && !state.devUserId) {
+    if (response.status === 401 && !state.devBypassLineAuth) {
       const isRedirecting = requestLineRelogin();
       throw new Error(
         isRedirecting
@@ -178,9 +175,15 @@ async function initializeLiff() {
       'ระบบจะลบข้อมูล EXIF และย่อขนาดก่อนจัดเก็บ';
 
     if (config.devBypassLineAuth) {
-      state.devUserId = 'dev-user-001';
-      setLineStatus('สวัสดี ผู้ใช้ทดสอบ (dev mode)');
-      restoreLineContactName();
+      state.devBypassLineAuth = true;
+      const contactName = $('#contactName');
+      contactName.readOnly = false;
+      contactName.value = '';
+      setLineStatus('โหมดทดสอบ Local — ไม่บันทึกข้อมูล LINE');
+      $('#successNotice').textContent =
+        'รายการนี้เป็นข้อมูลทดสอบ Local และจะไม่มีการแจ้งเตือนผ่าน LINE OA';
+      $('#historyDescription').textContent =
+        'ตรวจสอบเรื่องร้องเรียนที่สร้างในโหมดทดสอบ Local';
       state.initialized = true;
       return true;
     }
@@ -500,7 +503,7 @@ async function loadProtectedGallery(container, attachments, urlBuilder, authToke
         headers: { authorization: `Bearer ${authToken}` },
       });
 
-      if (response.status === 401 && !state.devUserId) {
+      if (response.status === 401 && !state.devBypassLineAuth) {
         const isRedirecting = requestLineRelogin();
         throw new Error(
           isRedirecting

@@ -24,6 +24,8 @@ function getComplaintTrackingUrl(referenceNo) {
 }
 
 export async function notifyComplaintCreated(complaint) {
+  if (!complaint?.line_user_id) return false;
+
   const text = [
     'ระบบได้รับเรื่องร้องเรียนของท่านแล้ว',
     `ติดตามเรื่อง: ${getComplaintTrackingUrl(complaint.reference_no)}`,
@@ -36,13 +38,17 @@ export async function notifyComplaintCreated(complaint) {
 
   try {
     await pushTextMessage(complaint.line_user_id, text);
+    return true;
   } catch (error) {
     // การส่ง LINE ไม่สำเร็จต้องไม่ทำให้ข้อมูลร้องเรียนหาย
     console.error('Unable to send complaint-created notification:', error.message);
+    return false;
   }
 }
 
 export async function notifyStatusChanged(complaint, note) {
+  if (!complaint?.line_user_id) return false;
+
   const lines = [
     'สถานะเรื่องร้องเรียนของท่านมีการเปลี่ยนแปลง',
     `ติดตามเรื่อง: ${getComplaintTrackingUrl(complaint.reference_no)}`,
@@ -62,6 +68,8 @@ export async function notifyStatusChanged(complaint, note) {
 }
 
 export async function notifyAssignmentChanged(complaint, note) {
+  if (!complaint?.line_user_id) return false;
+
   const lines = [
     'เรื่องร้องเรียนของท่านได้รับการมอบหมายแล้ว',
     `ติดตามเรื่อง: ${getComplaintTrackingUrl(complaint.reference_no)}`,
