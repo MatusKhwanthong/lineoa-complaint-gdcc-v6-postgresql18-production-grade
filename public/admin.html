@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#083f3a" />
     <title>Smart City Complaint Command Center</title>
     <link rel="stylesheet" href="/styles.css?v=20260727-image-viewer-1" />
-    <link rel="stylesheet" href="/admin-v3.css?v=20260807-category-filter-1" />
+    <link rel="stylesheet" href="/admin-v3.css?v=20260813-staff-department-filter-1" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +19,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin="anonymous"
     ></script>
-    <script type="module" src="/admin.js?v=20260810-top-category-pages-1"></script>
+    <script type="module" src="/admin.js?v=20260813-staff-department-filter-1"></script>
   </head>
   <body class="admin-v3-body">
     <section id="loginPanel" class="v3-login">
@@ -487,12 +487,20 @@
                 <p class="overline">STAFF DIRECTORY</p>
                 <h2>ข้อมูลเจ้าหน้าที่</h2>
               </div>
-              <button
-                id="addStaffProfileButton"
-                class="v3-primary hidden"
-              >
-                เพิ่มข้อมูลเจ้าหน้าที่
-              </button>
+              <div class="staff-profile-head-actions">
+                <label class="staff-profile-department-filter">
+                  <span>ดูเจ้าหน้าที่ของหน่วยงาน</span>
+                  <select id="staffProfileDepartmentFilter">
+                    <option value="">ทุกหน่วยงาน</option>
+                  </select>
+                </label>
+                <button
+                  id="addStaffProfileButton"
+                  class="v3-primary hidden"
+                >
+                  เพิ่มข้อมูลเจ้าหน้าที่
+                </button>
+              </div>
             </div>
             <div id="staffProfileGovernanceTable"></div>
           </section>

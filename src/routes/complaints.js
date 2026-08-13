@@ -128,10 +128,12 @@ router.post('/', uploadComplaintImages, async (req, res) => {
           contact_name,
           contact_phone,
           contact_email,
+          due_at,
           privacy_consent_at,
           privacy_consent_version
        ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+          current_timestamp + make_interval(hours => $15::integer),
           current_timestamp, '1.1'
        )
        RETURNING *`,
@@ -150,6 +152,7 @@ router.post('/', uploadComplaintImages, async (req, res) => {
         req.lineUser.displayName || input.contactName,
         input.contactPhone,
         input.contactEmail,
+        category.sla_hours,
       ],
     );
 

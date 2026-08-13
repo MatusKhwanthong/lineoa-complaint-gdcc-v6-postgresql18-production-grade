@@ -364,6 +364,42 @@ input,select,textarea{
   }
 }
 
+.staff-profile-head-actions{
+  display:flex;
+  align-items:flex-end;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:.7rem;
+}
+.staff-profile-department-filter{
+  display:grid;
+  gap:.3rem;
+  color:var(--muted);
+  font-size:.75rem;
+  font-weight:800;
+}
+.staff-profile-department-filter select{
+  min-width:230px;
+  padding:.72rem .85rem;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#fff;
+  color:var(--ink);
+}
+@media(max-width:600px){
+  #governanceStaffProfiles .v3-card-head{
+    display:grid;
+  }
+  .staff-profile-head-actions{
+    justify-content:stretch;
+  }
+  .staff-profile-department-filter,
+  .staff-profile-department-filter select,
+  .staff-profile-head-actions .v3-primary{
+    width:100%;
+  }
+}
+
 /* Smart Map marker status legend. */
 .map-panel-card > .v3-card-head{
   align-items:flex-start;
