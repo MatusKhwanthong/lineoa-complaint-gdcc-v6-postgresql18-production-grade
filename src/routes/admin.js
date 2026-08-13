@@ -1581,6 +1581,10 @@ const staffProfileSchema = z.object({
 });
 
 router.get('/governance/staff-profiles', requireRoles('dev'), async (req, res) => {
+  const parsed = z.object({ departmentId: z.string().uuid().optional() }).safeParse(req.query);
+  if (!parsed.success) throw new ApiError(400, 'หน่วยงานที่ใช้กรองไม่ถูกต้อง');
+  const values = parsed.data.departmentId ? [parsed.data.departmentId] : [];
+  const where = parsed.data.departmentId ? 'WHERE sp.department_id = $1' : '';
   const result = await pool.query(
     `SELECT
         sp.id,
@@ -1594,7 +1598,9 @@ router.get('/governance/staff-profiles', requireRoles('dev'), async (req, res) =
         d.name_th AS department_name
        FROM staff_profiles sp
        LEFT JOIN departments d ON d.id = sp.department_id
-      ORDER BY sp.full_name`,
+       ${where}
+       ORDER BY sp.full_name`,
+    values,
   );
   res.json({ success: true, data: result.rows });
 });
@@ -2173,6 +2179,8 @@ router.get('/governance/audit-logs', requireRoles('admin','dev','supervisor','ex
 
   res.json({ success: true, data: result.rows });
 });
+
+//Export complaints report as CSV
 
 router.get('/reports/export.csv', requireRoles('admin', 'dev', 'supervisor', 'executive', 'exclusive'), async (req, res) => {
   const globalAccess = canReadAllDepartments(req.admin.role);
