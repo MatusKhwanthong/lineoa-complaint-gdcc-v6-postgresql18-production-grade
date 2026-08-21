@@ -87,9 +87,6 @@ export async function notifyAssignmentChanged(complaint, note) {
   if (complaint.assigned_staff_phone) {
     lines.push(`เบอร์โทรศัพท์: ${complaint.assigned_staff_phone}`);
   }
-  if (complaint.assigned_staff_line_id) {
-    lines.push(`LINE ID: ${complaint.assigned_staff_line_id}`);
-  }
 
   if (note) lines.push(`หมายเหตุ: ${note}`);
 
