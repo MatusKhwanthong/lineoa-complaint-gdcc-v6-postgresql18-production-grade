@@ -1315,7 +1315,7 @@ router.patch(
     if (assignedStaffProfileId) {
       if (!departmentId) throw new ApiError(400, 'กรุณาเลือกหน่วยงานก่อนเลือกเจ้าหน้าที่');
       const profileResult = await pool.query(
-        `SELECT id, full_name, position_title, phone, line_id, department_id
+        `SELECT id, full_name, position_title, phone, department_id
            FROM staff_profiles
           WHERE id = $1
             AND department_id = $2`,
@@ -1405,7 +1405,6 @@ router.patch(
             assigned_staff_name: assignedStaffProfile?.full_name ?? null,
             assigned_staff_position: assignedStaffProfile?.position_title ?? null,
             assigned_staff_phone: assignedStaffProfile?.phone ?? null,
-            assigned_staff_line_id: assignedStaffProfile?.line_id ?? null,
           },
           parsed.data.note,
         )
