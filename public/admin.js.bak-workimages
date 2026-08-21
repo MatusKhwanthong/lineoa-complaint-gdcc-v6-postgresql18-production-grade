@@ -727,12 +727,7 @@ async function openCase(id) {
   const assignSection = canManageAssignment
     ? `<section class="drawer-section"><h3>มอบหมาย</h3><div class="drawer-form"><label>หน่วยงาน<select id="assignDepartment" ${canChangeDepartment ? "" : "disabled"}>${depOptions}</select>${canChangeDepartment ? "" : '<small class="muted">เฉพาะ Admin และ Supervisor เท่านั้นที่เปลี่ยนหน่วยงานได้</small>'}</label><label>เจ้าหน้าที่ผู้รับผิดชอบ<select id="assignStaffProfile"><option value="">กำลังโหลดรายชื่อ…</option></select><small class="muted">รายชื่อจะแสดงตามหน่วยงานที่เลือก</small></label><div class="two"><label>ความสำคัญ<select id="assignPriority"><option value="low">ต่ำ</option><option value="normal">ปกติ</option><option value="high">สูง</option><option value="urgent">เร่งด่วน</option></select></label><label>กำหนดเสร็จ<input id="assignDue" type="datetime-local"></label></div><label>หมายเหตุ<input id="assignNote" placeholder="รายละเอียดการมอบหมาย"></label><button id="assignButton" class="v3-primary">บันทึกการมอบหมายและแจ้ง LINE</button></div></section>`
     : "";
-  const workImageSection =
-    `<section class="drawer-section work-phase-card"><h3 class="phase-heading"><i class="work-phase-dot progress"></i>รูปภาพขณะกำลังดำเนินการ</h3>${progressImages ? `<div class="drawer-images">${progressImages}</div>` : '<p class="muted">ยังไม่มีรูปขณะกำลังดำเนินการ</p>'}</section>` +
-    `<section class="drawer-section work-phase-card completed"><h3 class="phase-heading"><i class="work-phase-dot completed"></i>รูปภาพเมื่อเสร็จสิ้น</h3>${completedImages ? `<div class="drawer-images">${completedImages}</div>` : '<p class="muted">ยังไม่มีรูปเมื่อเสร็จสิ้น</p>'}</section>` +
-    (canEditStatus
-      ? `<section class="drawer-section work-progress-section"><h3>อัปเดตผลการดำเนินงาน</h3><div class="drawer-form"><div id="workImageAlert" class="alert hidden"></div><label>สถานะ<select id="workStatus"><option value="in_progress" ${c.status !== "completed" ? "selected" : ""} ${c.status === "completed" ? "disabled" : ""}>กำลังดำเนินการ</option><option value="completed" ${c.status === "completed" ? "selected" : ""}>เสร็จสิ้น</option></select></label><label>แนบรูปจากการปฏิบัติงาน (ถ้ามี)<input id="workImages" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple><small class="muted">รองรับ JPEG, PNG, WebP, HEIC และ HEIF ขนาดไม่เกิน 10 MB ต่อภาพ</small></label><label>หมายเหตุ<input id="workImageNote" maxlength="500" placeholder="เช่น ดำเนินการซ่อมแซมเรียบร้อย"></label><button id="saveWorkProgressButton" class="v3-primary" type="button">บันทึกสถานะและแจ้ง LINE</button></div></section>`
-      : `<section class="drawer-section"><h3>อัปเดตผลการดำเนินงาน</h3><p class="muted">คุณสามารถแก้ไขสถานะได้เฉพาะเรื่องที่ได้รับมอบหมายเท่านั้น</p></section>`);
+  const workImageSection = `<section class="drawer-section work-progress-section"><h3>รูปภาพผลการดำเนินงาน</h3><div class="work-phase-block"><h4><i class="work-phase-dot progress"></i>กำลังดำเนินการ</h4>${progressImages ? `<div class="drawer-images">${progressImages}</div>` : '<p class="muted">ยังไม่มีรูปขณะกำลังดำเนินการ</p>'}</div><div class="work-phase-block completed"><h4><i class="work-phase-dot completed"></i>เสร็จสิ้น</h4>${completedImages ? `<div class="drawer-images">${completedImages}</div>` : '<p class="muted">ยังไม่มีรูปเมื่อเสร็จสิ้น</p>'}</div>${canEditStatus ? `<div class="drawer-form work-image-form"><div id="workImageAlert" class="alert hidden"></div><label>สถานะ<select id="workStatus"><option value="in_progress" ${c.status !== "completed" ? "selected" : ""} ${c.status === "completed" ? "disabled" : ""}>กำลังดำเนินการ</option><option value="completed" ${c.status === "completed" ? "selected" : ""}>เสร็จสิ้น</option></select></label><label>แนบรูปจากการปฏิบัติงาน (ถ้ามี)<input id="workImages" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple><small class="muted">รองรับ JPEG, PNG, WebP, HEIC และ HEIF ขนาดไม่เกิน 10 MB ต่อภาพ</small></label><label>หมายเหตุ<input id="workImageNote" maxlength="500" placeholder="เช่น ดำเนินการซ่อมแซมเรียบร้อย"></label><button id="saveWorkProgressButton" class="v3-primary" type="button">บันทึกสถานะและแจ้ง LINE</button></div>` : '<p class="muted">คุณสามารถแก้ไขสถานะได้เฉพาะเรื่องที่ได้รับมอบหมายเท่านั้น</p>'}</section>`;
   const deleteSection = isSystemAdmin()
     ? `<section class="drawer-section complaint-danger-zone"><h3>ลบเรื่องร้องเรียน</h3><p>การลบจะนำเรื่อง ประวัติ และรูปภาพทั้งหมดออกอย่างถาวร</p><button id="deleteComplaintButton" type="button" class="delete-complaint-button">ลบเรื่องร้องเรียน</button></section>`
     : "";
@@ -904,9 +899,6 @@ async function saveWorkProgress(id) {
       result.data?.lineNotified === false ? "error" : "success",
     );
     await openCase(id);
-    // สถานะเปลี่ยนแล้ว ต้องรีเฟรชตาราง/แดชบอร์ดเบื้องหลังด้วย
-    // ไม่งั้นแถวในรายการจะยังค้างสถานะเดิม (เช่น "มอบหมายแล้ว")
-    await refreshBackgroundAfterStatusChange();
   } catch (error) {
     const reason =
       error instanceof TypeError
@@ -920,23 +912,6 @@ async function saveWorkProgress(id) {
     );
     button.disabled = false;
     button.textContent = "บันทึกสถานะและแจ้ง LINE";
-  }
-}
-// รีโหลดข้อมูลที่แสดงอยู่เบื้องหลังลิ้นชัก (KPI, แดชบอร์ด, ตารางรายการ)
-// โดยคงหน้าที่ผู้ใช้เปิดอยู่ไว้เหมือนเดิม
-async function refreshBackgroundAfterStatusChange() {
-  try {
-    const result = await api(scopedDashboardPath());
-    dashboardCache = result.data;
-    renderDashboard();
-    const active =
-      document.querySelector(".v3-nav-item.active")?.dataset.view || "dashboard";
-    if (active === "complaints") await loadComplaints(currentPage);
-    if (active === "map") renderMapCases();
-    if (active === "reports") renderReports();
-  } catch (error) {
-    // รีเฟรชไม่สำเร็จไม่ควรทำให้การบันทึกที่สำเร็จไปแล้วดูเหมือนล้มเหลว
-    console.warn("refresh after status change failed:", error);
   }
 }
 async function assignCase(id) {
