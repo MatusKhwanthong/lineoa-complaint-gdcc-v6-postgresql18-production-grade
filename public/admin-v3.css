@@ -2434,3 +2434,65 @@ button[aria-disabled="true"],
   padding-top:0;
   border-top:0;
 }
+
+/* ===== รายละเอียด Audit Log แบบกางดูได้ ===== */
+.audit-detail-box{
+  max-width:420px;
+}
+.audit-detail-box>summary{
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+  cursor:pointer;
+  list-style:none;
+}
+.audit-detail-box>summary::-webkit-details-marker{
+  display:none;
+}
+.audit-detail-preview{
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--muted);
+  font-size:.78rem;
+}
+.audit-detail-box[open] .audit-detail-preview{
+  display:none;
+}
+.audit-detail-toggle{
+  flex:0 0 auto;
+  padding:.22rem .6rem;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:#fff;
+  color:var(--deep);
+  font-size:.72rem;
+  font-weight:800;
+  white-space:nowrap;
+}
+.audit-detail-toggle::after{
+  content:"เพิ่มเติม";
+}
+.audit-detail-box[open] .audit-detail-toggle::after{
+  content:"ย่อ";
+}
+.audit-detail-box>summary:hover .audit-detail-toggle{
+  border-color:var(--mint);
+  background:#f2faf8;
+}
+.audit-detail-full{
+  margin:.55rem 0 0;
+  padding:.7rem .8rem;
+  max-height:320px;
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#fafcfb;
+  color:var(--ink);
+  font-size:.75rem;
+  line-height:1.55;
+  white-space:pre-wrap;
+  word-break:break-word;
+}

@@ -1288,17 +1288,10 @@ function auditDetailHtml(detail) {
   const value = parseAuditDetail(detail);
   const remaining = { ...value };
   delete remaining.deletionReason;
-  if (!Object.keys(remaining).length) return '<span class="muted">-</span>';
-
-  const compact = JSON.stringify(remaining);
-  // สั้นพอที่จะอ่านจบในบรรทัดเดียว ไม่ต้องมีปุ่ม
-  if (compact.length <= 60) {
-    return `<div class="audit-detail">${escapeHtml(compact)}</div>`;
-  }
-
-  // ยาวเกิน แสดงย่อพร้อมปุ่มกางดูฉบับเต็มแบบจัดรูปแบบ
-  const pretty = JSON.stringify(remaining, null, 2);
-  return `<details class="audit-detail-box"><summary><span class="audit-detail-preview">${escapeHtml(compact)}</span><span class="audit-detail-toggle"></span></summary><pre class="audit-detail-full">${escapeHtml(pretty)}</pre></details>`;
+  const remainingText = Object.keys(remaining).length
+    ? JSON.stringify(remaining)
+    : "-";
+  return `<div class="audit-detail" title="${escapeHtml(remainingText)}">${escapeHtml(remainingText)}</div>`;
 }
 function setGovernanceTab(mode) {
   governanceMode = mode;
