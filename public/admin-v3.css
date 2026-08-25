@@ -2496,3 +2496,20 @@ button[aria-disabled="true"],
   white-space:pre-wrap;
   word-break:break-word;
 }
+
+/* ===== ปุ่มเปิดแผนที่ ให้เด่นขึ้น =====
+   เดิมพื้นเขียวจางมาก (#e7f3f0) ตัวอักษรสีเขียว อ่านแล้วดูเหมือนป้าย
+   ไม่ใช่ปุ่ม เปลี่ยนเป็นปุ่มทึบสีเดียวกับปุ่มหลักของระบบ (.v3-primary)
+   ตัวอักษรขาวตัดกับพื้นชัดเจน ผ่านเกณฑ์ WCAG AA */
+a.map-link-button{
+  align-items:center;
+  gap:.45rem;
+  padding:.68rem 1.05rem;
+  border-radius:12px;
+  background:linear-gradient(135deg,#0b695b,#1c9a82);
+  color:#fff;
+  box-shadow:0 8px 18px rgba(11,105,91,.26);
+}
+a.map-link-button:visited{
+  color:#fff;
+}
