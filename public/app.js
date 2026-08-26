@@ -742,11 +742,14 @@ async function loadComplaints() {
 
       const assignedStaff = document.createElement('p');
       if (item.assigned_staff_name) {
-        const parts = [`เจ้าหน้าที่ผู้รับผิดชอบ: ${item.assigned_staff_name}`];
-        if (item.assigned_staff_position) parts.push(`(${item.assigned_staff_position})`);
+        // ชื่อกับตำแหน่งอยู่ด้วยกัน ส่วนช่องทางติดต่อคั่นด้วย |
+        const nameBlock = item.assigned_staff_position
+          ? `${item.assigned_staff_name} (${item.assigned_staff_position})`
+          : item.assigned_staff_name;
+        const parts = [nameBlock];
         if (item.assigned_staff_phone) parts.push(`เบอร์โทร ${item.assigned_staff_phone}`);
         if (item.assigned_staff_line_id) parts.push(`LINE ID ${item.assigned_staff_line_id}`);
-        assignedStaff.textContent = parts.join(' ');
+        assignedStaff.textContent = `เจ้าหน้าที่ผู้รับผิดชอบ: ${parts.join(' | ')}`;
       } else {
         assignedStaff.textContent = 'เจ้าหน้าที่ผู้รับผิดชอบ: ยังไม่มอบหมาย';
       }
