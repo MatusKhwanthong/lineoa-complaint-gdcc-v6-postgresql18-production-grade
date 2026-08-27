@@ -1315,7 +1315,7 @@ router.patch(
     if (assignedStaffProfileId) {
       if (!departmentId) throw new ApiError(400, 'กรุณาเลือกหน่วยงานก่อนเลือกเจ้าหน้าที่');
       const profileResult = await pool.query(
-        `SELECT id, full_name, position_title, phone, line_id, department_id
+        `SELECT id, full_name, position_title, phone, department_id
            FROM staff_profiles
           WHERE id = $1
             AND department_id = $2`,
@@ -1405,7 +1405,6 @@ router.patch(
             assigned_staff_name: assignedStaffProfile?.full_name ?? null,
             assigned_staff_position: assignedStaffProfile?.position_title ?? null,
             assigned_staff_phone: assignedStaffProfile?.phone ?? null,
-            assigned_staff_line_id: assignedStaffProfile?.line_id ?? null,
           },
           parsed.data.note,
         )
@@ -1817,8 +1816,24 @@ router.post('/governance/users', requireRoles('admin', 'dev'), async (req, res) 
       );
     }
 
-    // หนึ่งหน่วยงานมี Officer และ Supervisor ได้มากกว่าหนึ่งคน
-    // (ข้อจำกัดเดิมถูกยกเลิกใน migration 028)
+    const duplicateResult = await pool.query(
+      `SELECT id
+         FROM staff_users
+        WHERE department_id = $1
+          AND role = $2
+          AND is_active = true
+        LIMIT 1`,
+      [departmentId, parsed.data.role],
+    );
+
+    if (duplicateResult.rowCount > 0) {
+      throw new ApiError(
+        409,
+        parsed.data.role === 'officer'
+          ? 'หน่วยงานนี้มี Officer อยู่แล้ว'
+          : 'หน่วยงานนี้มี Supervisor อยู่แล้ว',
+      );
+    }
   }
 
   const hash = await bcrypt.hash(parsed.data.password, 12);
@@ -1853,7 +1868,7 @@ router.post('/governance/users', requireRoles('admin', 'dev'), async (req, res) 
     if (error?.code === '23505') {
       throw new ApiError(
         409,
-        'ชื่อผู้ใช้นี้มีอยู่แล้ว',
+        'ชื่อผู้ใช้นี้มีอยู่แล้ว หรือหน่วยงานนี้มีผู้ใช้งานบทบาทดังกล่าวอยู่แล้ว',
       );
     }
     throw error;
@@ -1954,8 +1969,27 @@ router.patch('/governance/users/:id', requireRoles('admin', 'dev'), async (req, 
       );
     }
 
-    // หนึ่งหน่วยงานมี Officer และ Supervisor ได้มากกว่าหนึ่งคน
-    // (ข้อจำกัดเดิมถูกยกเลิกใน migration 028)
+    if (parsed.data.isActive) {
+      const duplicateResult = await pool.query(
+        `SELECT id
+           FROM staff_users
+          WHERE department_id = $1
+            AND role = $2
+            AND is_active = true
+            AND id <> $3
+          LIMIT 1`,
+        [departmentId, parsed.data.role, req.params.id],
+      );
+
+      if (duplicateResult.rowCount > 0) {
+        throw new ApiError(
+          409,
+          parsed.data.role === 'officer'
+            ? 'หน่วยงานนี้มี Officer อยู่แล้ว'
+            : 'หน่วยงานนี้มี Supervisor อยู่แล้ว',
+        );
+      }
+    }
   }
 
   const values = [
@@ -1998,7 +2032,7 @@ router.patch('/governance/users/:id', requireRoles('admin', 'dev'), async (req, 
     if (error?.code === '23505') {
       throw new ApiError(
         409,
-        'ข้อมูลซ้ำกับผู้ใช้งานที่มีอยู่แล้ว',
+        'หน่วยงานนี้มีผู้ใช้งานบทบาทดังกล่าวอยู่แล้ว',
       );
     }
     throw error;

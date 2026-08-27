@@ -3,7 +3,6 @@ services:
     name: lineoa-complaint-gdcc-v6
     runtime: node
     plan: free
-    branch: develop
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /health/live
@@ -13,9 +12,10 @@ services:
         value: production
       - key: NODE_VERSION
         value: 22
-      # Neon: ตั้งค่าจริงใน Render Dashboard > Environment (ห้าม commit ลง git)
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: lineoa-complaint-db
+          property: connectionString
       - key: DB_SSL
         value: "true"
       - key: DB_SSL_REJECT_UNAUTHORIZED
@@ -37,5 +37,9 @@ services:
       - key: LINE_CHANNEL_ACCESS_TOKEN
         sync: false
 
-# ฐานข้อมูลย้ายไปใช้ Neon (external) แล้ว จึงไม่ประกาศ databases: ที่นี่
-# ตั้ง DATABASE_URL ด้วย connection string ของ Neon ใน Render Dashboard
+databases:
+  - name: lineoa-complaint-db
+    plan: free
+    databaseName: complaint_db
+    user: complaint_app
+    postgresMajorVersion: "18"

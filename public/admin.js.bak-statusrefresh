@@ -904,9 +904,6 @@ async function saveWorkProgress(id) {
       result.data?.lineNotified === false ? "error" : "success",
     );
     await openCase(id);
-    // สถานะเปลี่ยนแล้ว ต้องรีเฟรชตาราง/แดชบอร์ดเบื้องหลังด้วย
-    // ไม่งั้นแถวในรายการจะยังค้างสถานะเดิม (เช่น "มอบหมายแล้ว")
-    await refreshBackgroundAfterStatusChange();
   } catch (error) {
     const reason =
       error instanceof TypeError
@@ -920,23 +917,6 @@ async function saveWorkProgress(id) {
     );
     button.disabled = false;
     button.textContent = "บันทึกสถานะและแจ้ง LINE";
-  }
-}
-// รีโหลดข้อมูลที่แสดงอยู่เบื้องหลังลิ้นชัก (KPI, แดชบอร์ด, ตารางรายการ)
-// โดยคงหน้าที่ผู้ใช้เปิดอยู่ไว้เหมือนเดิม
-async function refreshBackgroundAfterStatusChange() {
-  try {
-    const result = await api(scopedDashboardPath());
-    dashboardCache = result.data;
-    renderDashboard();
-    const active =
-      document.querySelector(".v3-nav-item.active")?.dataset.view || "dashboard";
-    if (active === "complaints") await loadComplaints(currentPage);
-    if (active === "map") renderMapCases();
-    if (active === "reports") renderReports();
-  } catch (error) {
-    // รีเฟรชไม่สำเร็จไม่ควรทำให้การบันทึกที่สำเร็จไปแล้วดูเหมือนล้มเหลว
-    console.warn("refresh after status change failed:", error);
   }
 }
 async function assignCase(id) {
@@ -1288,17 +1268,10 @@ function auditDetailHtml(detail) {
   const value = parseAuditDetail(detail);
   const remaining = { ...value };
   delete remaining.deletionReason;
-  if (!Object.keys(remaining).length) return '<span class="muted">-</span>';
-
-  const compact = JSON.stringify(remaining);
-  // สั้นพอที่จะอ่านจบในบรรทัดเดียว ไม่ต้องมีปุ่ม
-  if (compact.length <= 60) {
-    return `<div class="audit-detail">${escapeHtml(compact)}</div>`;
-  }
-
-  // ยาวเกิน แสดงย่อพร้อมปุ่มกางดูฉบับเต็มแบบจัดรูปแบบ
-  const pretty = JSON.stringify(remaining, null, 2);
-  return `<details class="audit-detail-box"><summary><span class="audit-detail-preview">${escapeHtml(compact)}</span><span class="audit-detail-toggle"></span></summary><pre class="audit-detail-full">${escapeHtml(pretty)}</pre></details>`;
+  const remainingText = Object.keys(remaining).length
+    ? JSON.stringify(remaining)
+    : "-";
+  return `<div class="audit-detail" title="${escapeHtml(remainingText)}">${escapeHtml(remainingText)}</div>`;
 }
 function setGovernanceTab(mode) {
   governanceMode = mode;

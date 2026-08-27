@@ -741,18 +741,9 @@ async function loadComplaints() {
       location.textContent = `สถานที่: ${item.location_text?.trim() || '-'}`;
 
       const assignedStaff = document.createElement('p');
-      if (item.assigned_staff_name) {
-        // ชื่อกับตำแหน่งอยู่ด้วยกัน ส่วนช่องทางติดต่อคั่นด้วย |
-        const nameBlock = item.assigned_staff_position
-          ? `${item.assigned_staff_name} (${item.assigned_staff_position})`
-          : item.assigned_staff_name;
-        const parts = [nameBlock];
-        if (item.assigned_staff_phone) parts.push(`เบอร์โทร ${item.assigned_staff_phone}`);
-        if (item.assigned_staff_line_id) parts.push(`LINE ID ${item.assigned_staff_line_id}`);
-        assignedStaff.textContent = `เจ้าหน้าที่ผู้รับผิดชอบ: ${parts.join(' | ')}`;
-      } else {
-        assignedStaff.textContent = 'เจ้าหน้าที่ผู้รับผิดชอบ: ยังไม่มอบหมาย';
-      }
+      assignedStaff.textContent = item.assigned_staff_name
+        ? `เจ้าหน้าที่ผู้รับผิดชอบ: ${item.assigned_staff_name}${item.assigned_staff_position ? ` (${item.assigned_staff_position})` : ''}${item.assigned_staff_phone ? ` • ${item.assigned_staff_phone}` : ''}`
+        : 'เจ้าหน้าที่ผู้รับผิดชอบ: ยังไม่มอบหมาย';
 
       const actions = document.createElement('div');
       actions.className = 'card-actions';

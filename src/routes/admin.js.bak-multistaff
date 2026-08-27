@@ -1817,8 +1817,24 @@ router.post('/governance/users', requireRoles('admin', 'dev'), async (req, res) 
       );
     }
 
-    // หนึ่งหน่วยงานมี Officer และ Supervisor ได้มากกว่าหนึ่งคน
-    // (ข้อจำกัดเดิมถูกยกเลิกใน migration 028)
+    const duplicateResult = await pool.query(
+      `SELECT id
+         FROM staff_users
+        WHERE department_id = $1
+          AND role = $2
+          AND is_active = true
+        LIMIT 1`,
+      [departmentId, parsed.data.role],
+    );
+
+    if (duplicateResult.rowCount > 0) {
+      throw new ApiError(
+        409,
+        parsed.data.role === 'officer'
+          ? 'หน่วยงานนี้มี Officer อยู่แล้ว'
+          : 'หน่วยงานนี้มี Supervisor อยู่แล้ว',
+      );
+    }
   }
 
   const hash = await bcrypt.hash(parsed.data.password, 12);
@@ -1853,7 +1869,7 @@ router.post('/governance/users', requireRoles('admin', 'dev'), async (req, res) 
     if (error?.code === '23505') {
       throw new ApiError(
         409,
-        'ชื่อผู้ใช้นี้มีอยู่แล้ว',
+        'ชื่อผู้ใช้นี้มีอยู่แล้ว หรือหน่วยงานนี้มีผู้ใช้งานบทบาทดังกล่าวอยู่แล้ว',
       );
     }
     throw error;
@@ -1954,8 +1970,27 @@ router.patch('/governance/users/:id', requireRoles('admin', 'dev'), async (req, 
       );
     }
 
-    // หนึ่งหน่วยงานมี Officer และ Supervisor ได้มากกว่าหนึ่งคน
-    // (ข้อจำกัดเดิมถูกยกเลิกใน migration 028)
+    if (parsed.data.isActive) {
+      const duplicateResult = await pool.query(
+        `SELECT id
+           FROM staff_users
+          WHERE department_id = $1
+            AND role = $2
+            AND is_active = true
+            AND id <> $3
+          LIMIT 1`,
+        [departmentId, parsed.data.role, req.params.id],
+      );
+
+      if (duplicateResult.rowCount > 0) {
+        throw new ApiError(
+          409,
+          parsed.data.role === 'officer'
+            ? 'หน่วยงานนี้มี Officer อยู่แล้ว'
+            : 'หน่วยงานนี้มี Supervisor อยู่แล้ว',
+        );
+      }
+    }
   }
 
   const values = [
@@ -1998,7 +2033,7 @@ router.patch('/governance/users/:id', requireRoles('admin', 'dev'), async (req, 
     if (error?.code === '23505') {
       throw new ApiError(
         409,
-        'ข้อมูลซ้ำกับผู้ใช้งานที่มีอยู่แล้ว',
+        'หน่วยงานนี้มีผู้ใช้งานบทบาทดังกล่าวอยู่แล้ว',
       );
     }
     throw error;
