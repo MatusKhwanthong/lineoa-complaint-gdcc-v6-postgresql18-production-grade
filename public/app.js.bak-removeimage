@@ -455,33 +455,12 @@ function renderSelectedImages() {
       }
     });
 
-    // ปุ่มลบรูป เผื่อเลือกผิดใบจะได้เปลี่ยนได้โดยไม่ต้องกรอกฟอร์มใหม่
-    const removeButton = document.createElement('button');
-    removeButton.type = 'button';
-    removeButton.className = 'image-remove';
-    removeButton.textContent = '✕';
-    removeButton.title = `ลบรูป ${file.name}`;
-    removeButton.setAttribute('aria-label', `ลบรูป ${file.name}`);
-    removeButton.addEventListener('click', (event) => {
-      event.stopPropagation();
-      removeSelectedImage(file);
-    });
-
     const caption = document.createElement('figcaption');
     caption.textContent = file.name;
 
-    figure.append(image, removeButton, caption);
+    figure.append(image, caption);
     $('#imagePreview').append(figure);
   }
-}
-
-function removeSelectedImage(target) {
-  const targetKey = getUploadFileKey(target);
-  state.selectedUploadFiles = state.selectedUploadFiles.filter(
-    (file) => getUploadFileKey(file) !== targetKey,
-  );
-  renderSelectedImages();
-  clearAlert();
 }
 
 function addSelectedImages(input) {
