@@ -1191,3 +1191,36 @@ button[aria-disabled="true"],
     max-height:72svh;
   }
 }
+
+/* ===== ปุ่มลบรูปที่เลือกไว้ก่อนส่งเรื่อง ===== */
+.image-preview figure{
+  position:relative;
+}
+.image-preview .image-remove{
+  position:absolute;
+  top:.65rem;
+  right:.65rem;
+  display:grid;
+  place-items:center;
+  width:30px;
+  height:30px;
+  padding:0;
+  border:0;
+  border-radius:50%;
+  background:rgba(19,51,46,.78);
+  color:#fff;
+  font-size:.9rem;
+  font-weight:900;
+  line-height:1;
+  cursor:pointer;
+  backdrop-filter:blur(3px);
+  box-shadow:0 4px 10px rgba(0,0,0,.25);
+}
+.image-preview .image-remove:hover,
+.image-preview .image-remove:focus-visible{
+  background:var(--red);
+}
+.image-preview .image-remove:focus-visible{
+  outline:3px solid rgba(216,76,76,.4);
+  outline-offset:2px;
+}
