@@ -86,39 +86,6 @@ function setupImageViewer() {
   });
 }
 
-// ชื่อช่องกรอกเป็นภาษาไทย สำหรับแปลรายละเอียดข้อผิดพลาดจากเซิร์ฟเวอร์
-const validationFieldLabels = {
-  categoryId: 'หมวดหมู่',
-  title: 'หัวข้อ',
-  description: 'รายละเอียด',
-  locationText: 'สถานที่เกิดเหตุ',
-  latitude: 'ละติจูด',
-  longitude: 'ลองจิจูด',
-  contactName: 'ชื่อผู้ติดต่อ',
-  contactPhone: 'เบอร์โทรศัพท์',
-  contactEmail: 'อีเมล',
-  privacyConsent: 'การยอมรับประกาศความเป็นส่วนตัว',
-};
-
-// แปลง zod flatten ({ formErrors, fieldErrors }) เป็นข้อความไทยที่อ่านรู้เรื่อง
-function describeValidationDetails(details) {
-  if (!details || typeof details !== 'object') return '';
-
-  const messages = [];
-
-  for (const [field, errors] of Object.entries(details.fieldErrors || {})) {
-    const reason = (errors || []).filter(Boolean).join(' / ');
-    if (!reason) continue;
-    messages.push(`${validationFieldLabels[field] || field}: ${reason}`);
-  }
-
-  for (const formError of details.formErrors || []) {
-    if (formError) messages.push(formError);
-  }
-
-  return messages.join(' • ');
-}
-
 function showAlert(message, type = 'error') {
   const alert = $('#alert');
   alert.textContent = message;
@@ -156,14 +123,10 @@ async function api(path, options = {}) {
     : await response.blob();
 
   if (!response.ok) {
-    const baseMessage =
+    const message =
       result && typeof result === 'object' && 'message' in result
         ? result.message
         : `เกิดข้อผิดพลาด ${response.status}`;
-    // เซิร์ฟเวอร์ส่งรายละเอียดว่าช่องไหนผิดมาใน details แต่เดิมถูกทิ้งไป
-    // ผู้ใช้จึงเห็นแค่ "ข้อมูลไม่ถูกต้อง" โดยไม่รู้ว่าต้องแก้ตรงไหน
-    const detailText = describeValidationDetails(result?.details);
-    const message = detailText ? `${baseMessage} — ${detailText}` : baseMessage;
 
     if (response.status === 401 && !state.devBypassLineAuth) {
       const isRedirecting = requestLineRelogin();
