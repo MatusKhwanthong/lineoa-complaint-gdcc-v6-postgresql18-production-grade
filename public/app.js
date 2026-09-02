@@ -342,6 +342,13 @@ function formatThaiDate(value) {
   }).format(new Date(value));
 }
 
+// วันครบกำหนดแสดงแค่วัน เดือน ปี ไม่ต้องมีเวลา
+function formatThaiDateOnly(value) {
+  return new Intl.DateTimeFormat('th-TH', {
+    dateStyle: 'long',
+  }).format(new Date(value));
+}
+
 function openStreetMapUrl(latitude, longitude) {
   const lat = Number(latitude).toFixed(6);
   const lng = Number(longitude).toFixed(6);
@@ -812,6 +819,11 @@ async function loadComplaints() {
         assignedStaff.textContent = 'เจ้าหน้าที่ผู้รับผิดชอบ: ยังไม่มอบหมาย';
       }
 
+      const dueDate = document.createElement('p');
+      if (item.due_at) {
+        dueDate.textContent = `กำหนดแล้วเสร็จ: ${formatThaiDateOnly(item.due_at)}`;
+      }
+
       const actions = document.createElement('div');
       actions.className = 'card-actions';
 
@@ -838,6 +850,7 @@ async function loadComplaints() {
         description,
         location,
         assignedStaff,
+        dueDate,
         actions,
         timeline,
       );

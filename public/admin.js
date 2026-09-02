@@ -74,6 +74,13 @@ async function api(path, opt = {}) {
   if (!r.ok) throw new Error(j.message || `เกิดข้อผิดพลาด ${r.status}`);
   return j;
 }
+// วันครบกำหนดแสดงแค่วัน เดือน ปี ไม่ต้องมีเวลา
+function fmtDateOnly(v) {
+  if (!v) return "-";
+  return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(
+    new Date(v),
+  );
+}
 function fmt(v) {
   if (!v) return "-";
   return new Intl.DateTimeFormat("th-TH", {
@@ -737,7 +744,7 @@ async function openCase(id) {
     ? `<section class="drawer-section complaint-danger-zone"><h3>ลบเรื่องร้องเรียน</h3><p>การลบจะนำเรื่อง ประวัติ และรูปภาพทั้งหมดออกอย่างถาวร</p><button id="deleteComplaintButton" type="button" class="delete-complaint-button">ลบเรื่องร้องเรียน</button></section>`
     : "";
   $("#drawerContent").innerHTML =
-    `<div class="drawer-hero">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.category_name)} • ${priorityLabels[c.priority] || c.priority || "ปกติ"}</p></div><div class="drawer-grid"><div class="drawer-field"><span>ผู้ร้องเรียน</span><b>${escapeHtml(c.contact_name)}</b></div><div class="drawer-field"><span>โทรศัพท์</span><b>${escapeHtml(c.contact_phone)}</b></div><div class="drawer-field"><span>หน่วยงาน</span><b>${escapeHtml(c.department_name || "ยังไม่มอบหมาย")}</b></div><div class="drawer-field"><span>เจ้าหน้าที่ผู้รับผิดชอบ</span><b>${escapeHtml(c.assigned_profile_name || "ยังไม่มอบหมาย")}</b>${c.assigned_profile_position ? `<small>ตำแหน่ง: ${escapeHtml(c.assigned_profile_position)}</small>` : ""}${c.assigned_profile_phone ? `<small>เบอร์โทรศัพท์: ${escapeHtml(c.assigned_profile_phone)}</small>` : ""}</div></div><section class="drawer-section"><h3>รายละเอียดเรื่องร้องเรียน</h3><p>${escapeHtml(c.description)}</p><p><b>สถานที่:</b> ${escapeHtml(c.location_text)}</p>${c.latitude != null && c.longitude != null ? `<a class="map-link-button" target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude, c.longitude)}">⌖ เปิดใน OpenStreetMap</a>` : ""}</section>${citizenImages ? `<section class="drawer-section"><h3>รูปภาพจากผู้แจ้ง</h3><div class="drawer-images">${citizenImages}</div></section>` : ""}${workImageSection}${assignSection}<section class="drawer-section"><h3>ประวัติการดำเนินงาน</h3><div class="timeline">${(c.history || []).map((h) => `<div class="timeline-item"><b>${statusLabels[h.new_status] || h.new_status}</b><p>${escapeHtml(h.note || "-")}</p><small>${fmt(h.created_at)} ${h.staff_name ? `• ${escapeHtml(h.staff_name)}` : ""}</small></div>`).join("")}</div></section>${deleteSection}`;
+    `<div class="drawer-hero">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.category_name)} • ${priorityLabels[c.priority] || c.priority || "ปกติ"}</p></div><div class="drawer-grid"><div class="drawer-field"><span>ผู้ร้องเรียน</span><b>${escapeHtml(c.contact_name)}</b></div><div class="drawer-field"><span>โทรศัพท์</span><b>${escapeHtml(c.contact_phone)}</b></div><div class="drawer-field"><span>หน่วยงาน</span><b>${escapeHtml(c.department_name || "ยังไม่มอบหมาย")}</b></div><div class="drawer-field"><span>เจ้าหน้าที่ผู้รับผิดชอบ</span><b>${escapeHtml(c.assigned_profile_name || "ยังไม่มอบหมาย")}</b>${c.assigned_profile_position ? `<small>ตำแหน่ง: ${escapeHtml(c.assigned_profile_position)}</small>` : ""}${c.assigned_profile_phone ? `<small>เบอร์โทรศัพท์: ${escapeHtml(c.assigned_profile_phone)}</small>` : ""}</div><div class="drawer-field"><span>กำหนดแล้วเสร็จ</span><b>${fmtDateOnly(c.due_at)}</b></div></div><section class="drawer-section"><h3>รายละเอียดเรื่องร้องเรียน</h3><p>${escapeHtml(c.description)}</p><p><b>สถานที่:</b> ${escapeHtml(c.location_text)}</p>${c.latitude != null && c.longitude != null ? `<a class="map-link-button" target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude, c.longitude)}">⌖ เปิดใน OpenStreetMap</a>` : ""}</section>${citizenImages ? `<section class="drawer-section"><h3>รูปภาพจากผู้แจ้ง</h3><div class="drawer-images">${citizenImages}</div></section>` : ""}${workImageSection}${assignSection}<section class="drawer-section"><h3>ประวัติการดำเนินงาน</h3><div class="timeline">${(c.history || []).map((h) => `<div class="timeline-item"><b>${statusLabels[h.new_status] || h.new_status}</b><p>${escapeHtml(h.note || "-")}</p><small>${fmt(h.created_at)} ${h.staff_name ? `• ${escapeHtml(h.staff_name)}` : ""}</small></div>`).join("")}</div></section>${deleteSection}`;
   if (canManageAssignment) {
     $("#assignPriority").value = c.priority || "normal";
     if (c.due_at)
