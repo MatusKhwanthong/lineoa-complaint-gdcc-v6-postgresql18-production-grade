@@ -15,3 +15,10 @@ backups/
 /backup_*.dump
 /*.bak
 /migration-error.txt
+
+# ไฟล์สำรองที่สร้างระหว่างแก้งาน (เช่น admin.js.bak-lineid)
+*.bak-*
+*.bak
+
+# โฟลเดอร์พักไฟล์รอลบ
+_to_delete/
