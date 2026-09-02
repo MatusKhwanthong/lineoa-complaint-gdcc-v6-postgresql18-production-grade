@@ -2161,7 +2161,7 @@ router.get('/reports/export.csv', requireRoles('admin', 'dev', 'supervisor', 'ex
   const values = departmentId ? [departmentId] : [];
   const where = departmentId ? 'WHERE c.department_id = $1' : '';
 
-  const result=await pool.query(`SELECT c.reference_no,c.title,cc.name_th AS category,c.status,c.priority,c.contact_name,c.contact_phone,c.location_text,d.name_th AS department,su.display_name AS assigned_staff,c.created_at,c.due_at,c.completed_at FROM complaints c JOIN complaint_categories cc ON cc.id=c.category_id LEFT JOIN departments d ON d.id=c.department_id LEFT JOIN staff_users su ON su.id=c.assigned_staff_user_id ${where} ORDER BY c.created_at DESC`, values);
+  const result=await pool.query(`SELECT c.reference_no,c.title,cc.name_th AS category,c.status,c.priority,c.contact_name,c.contact_phone,c.location_text,d.name_th AS department,COALESCE(asp.full_name, su.display_name) AS assigned_staff,c.created_at,c.due_at,c.completed_at FROM complaints c JOIN complaint_categories cc ON cc.id=c.category_id LEFT JOIN departments d ON d.id=c.department_id LEFT JOIN staff_users su ON su.id=c.assigned_staff_user_id LEFT JOIN staff_profiles asp ON asp.id=c.assigned_staff_profile_id ${where} ORDER BY c.created_at DESC`, values);
   const headers=['reference_no','title','category','status','priority','contact_name','contact_phone','location_text','department','assigned_staff','created_at','due_at','completed_at'];
   const csv='\ufeff'+[headers.join(','),...result.rows.map(r=>headers.map(h=>escapeCsvField(h==='contact_phone'?toExcelText(r[h]):r[h])).join(','))].join('\n');
   await writeAudit(req,'report.export.csv','report',null,{rows:result.rowCount});
