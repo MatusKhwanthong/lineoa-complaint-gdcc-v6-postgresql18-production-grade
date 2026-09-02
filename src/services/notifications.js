@@ -16,6 +16,18 @@ export function getStatusLabel(status) {
   return statusLabels[status] || status;
 }
 
+// วันครบกำหนดในรูปแบบไทย แสดงแค่วัน เดือน ปี
+// กำหนดเขตเวลาไทยเสมอ ไม่ให้วันเลื่อนตามเขตเวลาของเซิร์ฟเวอร์
+function formatThaiDueDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('th-TH', {
+    dateStyle: 'long',
+    timeZone: 'Asia/Bangkok',
+  }).format(date);
+}
+
 function getComplaintTrackingUrl(referenceNo) {
   const url = new URL(config.appBaseUrl);
   url.searchParams.set('tab', 'history');
@@ -90,6 +102,9 @@ export async function notifyAssignmentChanged(complaint, note) {
   if (complaint.assigned_staff_line_id) {
     lines.push(`LINE ID: ${complaint.assigned_staff_line_id}`);
   }
+
+  const dueText = formatThaiDueDate(complaint.due_at);
+  if (dueText) lines.push(`กำหนดแล้วเสร็จ: ${dueText}`);
 
   if (note) lines.push(`หมายเหตุ: ${note}`);
 

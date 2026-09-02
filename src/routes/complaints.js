@@ -130,11 +130,13 @@ router.post('/', uploadComplaintImages, async (req, res) => {
           contact_email,
           due_at,
           privacy_consent_at,
-          privacy_consent_version
+          privacy_consent_version,
+          status
        ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
           current_timestamp + make_interval(hours => $15::integer),
-          current_timestamp, '1.1'
+          current_timestamp, '1.1',
+          'received'::complaint_status
        )
        RETURNING *`,
       [
@@ -244,6 +246,7 @@ router.get('/', async (req, res) => {
         c.longitude,
         c.created_at,
         c.updated_at,
+        c.due_at,
         cc.name_th AS category_name,
         d.name_th AS department_name,
         asp.full_name AS assigned_staff_name,
@@ -343,6 +346,7 @@ router.get('/:referenceNo', async (req, res) => {
         c.status,
         c.created_at,
         c.updated_at,
+        c.due_at,
         cc.name_th AS category_name,
         d.name_th AS department_name,
         asp.full_name AS assigned_staff_name,
