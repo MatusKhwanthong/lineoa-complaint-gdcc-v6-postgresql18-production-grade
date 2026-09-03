@@ -2513,3 +2513,34 @@ a.map-link-button{
 a.map-link-button:visited{
   color:#fff;
 }
+
+/* ===== ป้ายสถานะ SLA ในตารางเรื่องร้องเรียน ===== */
+.sla-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:.35rem;
+  padding:.3rem .6rem;
+  border-radius:999px;
+  font-size:.72rem;
+  font-weight:900;
+  white-space:nowrap;
+}
+.sla-badge::before{
+  content:"";
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:currentColor;
+}
+.sla-on_track{
+  background:#dcf6ea;
+  color:#13744e;
+}
+.sla-near_due{
+  background:#fff1d6;
+  color:#8a5a00;
+}
+.sla-overdue{
+  background:#ffe1e1;
+  color:#a52b2b;
+}

@@ -433,11 +433,42 @@ function renderKpis() {
     )
     .join("");
 }
+// สถานะ SLA คำนวณจากวันครบกำหนดเทียบกับเวลาปัจจุบัน ไม่ได้เก็บในฐานข้อมูล
+// จึงอัปเดตตัวเองตลอดโดยไม่ต้องมีงานตั้งเวลามาคอยเปลี่ยนค่า
+const SLA_NEAR_DUE_DAYS = 2;
+const closedStatuses = ["completed", "rejected", "cancelled"];
+
+function slaState(row) {
+  // เรื่องที่จบแล้วไม่ต้องวัด SLA ต่อ
+  if (closedStatuses.includes(row.status)) return null;
+  if (!row.due_at) return null;
+
+  const due = new Date(row.due_at).getTime();
+  if (Number.isNaN(due)) return null;
+
+  const msLeft = due - Date.now();
+  if (msLeft < 0) return "overdue";
+  if (msLeft <= SLA_NEAR_DUE_DAYS * 24 * 60 * 60 * 1000) return "near_due";
+  return "on_track";
+}
+
+const slaLabels = {
+  on_track: "ปกติ",
+  near_due: "ใกล้เกินกำหนด",
+  overdue: "เกินกำหนด",
+};
+
+function slaBadge(row) {
+  const state = slaState(row);
+  if (!state) return '<span class="muted">-</span>';
+  return `<span class="sla-badge sla-${state}">${slaLabels[state]}</span>`;
+}
+
 function complaintTableRow(r, compact = false) {
-  return `<tr><td class="case-ref">${escapeHtml(r.reference_no)}</td><td><div class="case-title">${escapeHtml(r.title)}</div></td>${compact ? "" : `<td>${escapeHtml(r.contact_name || "-")}</td>`}<td>${escapeHtml(r.category_name || "-")}</td><td>${escapeHtml(r.department_name || "ยังไม่มอบหมาย")}</td><td>${fmt(r.created_at)}</td><td>${priorityBadge(r.priority)}</td><td>${badge(r.status)}</td><td><button class="view-case" data-id="${r.id}">ดูรายละเอียด</button></td></tr>`;
+  return `<tr><td class="case-ref">${escapeHtml(r.reference_no)}</td><td><div class="case-title">${escapeHtml(r.title)}</div></td>${compact ? "" : `<td>${escapeHtml(r.contact_name || "-")}</td>`}<td>${escapeHtml(r.category_name || "-")}</td><td>${escapeHtml(r.department_name || "ยังไม่มอบหมาย")}</td><td>${fmt(r.created_at)}</td><td>${priorityBadge(r.priority)}</td><td>${slaBadge(r)}</td><td>${badge(r.status)}</td><td><button class="view-case" data-id="${r.id}">ดูรายละเอียด</button></td></tr>`;
 }
 function tableHtml(rows, compact = false, groupByMonth = false) {
-  const columnCount = compact ? 8 : 9;
+  const columnCount = compact ? 9 : 10;
   const body = groupByMonth
     ? groupMapCasesByMonth(rows)
         .map(
@@ -446,7 +477,7 @@ function tableHtml(rows, compact = false, groupByMonth = false) {
         )
         .join("")
     : rows.map((row) => complaintTableRow(row, compact)).join("");
-  return `<div class="table-wrap"><table class="v3-table"><thead><tr><th>เลขรับเรื่อง</th><th>เรื่องร้องเรียน</th>${compact ? "" : "<th>ผู้ร้อง</th>"}<th>หมวดหมู่</th><th>หน่วยงาน</th><th>วันที่รับเรื่อง</th><th>ความสำคัญ</th><th>สถานะ</th><th></th></tr></thead><tbody>${body || `<tr><td colspan="${columnCount}" class="empty">ไม่พบเรื่องร้องเรียน</td></tr>`}</tbody></table></div>`;
+  return `<div class="table-wrap"><table class="v3-table"><thead><tr><th>เลขรับเรื่อง</th><th>เรื่องร้องเรียน</th>${compact ? "" : "<th>ผู้ร้อง</th>"}<th>หมวดหมู่</th><th>หน่วยงาน</th><th>วันที่รับเรื่อง</th><th>ความสำคัญ</th><th>SLA</th><th>สถานะ</th><th></th></tr></thead><tbody>${body || `<tr><td colspan="${columnCount}" class="empty">ไม่พบเรื่องร้องเรียน</td></tr>`}</tbody></table></div>`;
 }
 function escapeHtml(v) {
   return String(v ?? "").replace(
@@ -744,7 +775,7 @@ async function openCase(id) {
     ? `<section class="drawer-section complaint-danger-zone"><h3>ลบเรื่องร้องเรียน</h3><p>การลบจะนำเรื่อง ประวัติ และรูปภาพทั้งหมดออกอย่างถาวร</p><button id="deleteComplaintButton" type="button" class="delete-complaint-button">ลบเรื่องร้องเรียน</button></section>`
     : "";
   $("#drawerContent").innerHTML =
-    `<div class="drawer-hero">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.category_name)} • ${priorityLabels[c.priority] || c.priority || "ปกติ"}</p></div><div class="drawer-grid"><div class="drawer-field"><span>ผู้ร้องเรียน</span><b>${escapeHtml(c.contact_name)}</b></div><div class="drawer-field"><span>โทรศัพท์</span><b>${escapeHtml(c.contact_phone)}</b></div><div class="drawer-field"><span>หน่วยงาน</span><b>${escapeHtml(c.department_name || "ยังไม่มอบหมาย")}</b></div><div class="drawer-field"><span>เจ้าหน้าที่ผู้รับผิดชอบ</span><b>${escapeHtml(c.assigned_profile_name || "ยังไม่มอบหมาย")}</b>${c.assigned_profile_position ? `<small>ตำแหน่ง: ${escapeHtml(c.assigned_profile_position)}</small>` : ""}${c.assigned_profile_phone ? `<small>เบอร์โทรศัพท์: ${escapeHtml(c.assigned_profile_phone)}</small>` : ""}</div><div class="drawer-field"><span>กำหนดแล้วเสร็จ</span><b>${fmtDateOnly(c.due_at)}</b></div></div><section class="drawer-section"><h3>รายละเอียดเรื่องร้องเรียน</h3><p>${escapeHtml(c.description)}</p><p><b>สถานที่:</b> ${escapeHtml(c.location_text)}</p>${c.latitude != null && c.longitude != null ? `<a class="map-link-button" target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude, c.longitude)}">⌖ เปิดใน OpenStreetMap</a>` : ""}</section>${citizenImages ? `<section class="drawer-section"><h3>รูปภาพจากผู้แจ้ง</h3><div class="drawer-images">${citizenImages}</div></section>` : ""}${workImageSection}${assignSection}<section class="drawer-section"><h3>ประวัติการดำเนินงาน</h3><div class="timeline">${(c.history || []).map((h) => `<div class="timeline-item"><b>${statusLabels[h.new_status] || h.new_status}</b><p>${escapeHtml(h.note || "-")}</p><small>${fmt(h.created_at)} ${h.staff_name ? `• ${escapeHtml(h.staff_name)}` : ""}</small></div>`).join("")}</div></section>${deleteSection}`;
+    `<div class="drawer-hero">${badge(c.status)}<h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.category_name)} • ${priorityLabels[c.priority] || c.priority || "ปกติ"}</p></div><div class="drawer-grid"><div class="drawer-field"><span>ผู้ร้องเรียน</span><b>${escapeHtml(c.contact_name)}</b></div><div class="drawer-field"><span>โทรศัพท์</span><b>${escapeHtml(c.contact_phone)}</b></div><div class="drawer-field"><span>หน่วยงาน</span><b>${escapeHtml(c.department_name || "ยังไม่มอบหมาย")}</b></div><div class="drawer-field"><span>เจ้าหน้าที่ผู้รับผิดชอบ</span><b>${escapeHtml(c.assigned_profile_name || "ยังไม่มอบหมาย")}</b>${c.assigned_profile_position ? `<small>ตำแหน่ง: ${escapeHtml(c.assigned_profile_position)}</small>` : ""}${c.assigned_profile_phone ? `<small>เบอร์โทรศัพท์: ${escapeHtml(c.assigned_profile_phone)}</small>` : ""}</div><div class="drawer-field"><span>กำหนดแล้วเสร็จ</span><b>${fmtDateOnly(c.due_at)}</b>${slaState(c) ? `<small>${slaBadge(c)}</small>` : ""}</div></div><section class="drawer-section"><h3>รายละเอียดเรื่องร้องเรียน</h3><p>${escapeHtml(c.description)}</p><p><b>สถานที่:</b> ${escapeHtml(c.location_text)}</p>${c.latitude != null && c.longitude != null ? `<a class="map-link-button" target="_blank" rel="noopener" href="${openStreetMapUrl(c.latitude, c.longitude)}">⌖ เปิดใน OpenStreetMap</a>` : ""}</section>${citizenImages ? `<section class="drawer-section"><h3>รูปภาพจากผู้แจ้ง</h3><div class="drawer-images">${citizenImages}</div></section>` : ""}${workImageSection}${assignSection}<section class="drawer-section"><h3>ประวัติการดำเนินงาน</h3><div class="timeline">${(c.history || []).map((h) => `<div class="timeline-item"><b>${statusLabels[h.new_status] || h.new_status}</b><p>${escapeHtml(h.note || "-")}</p><small>${fmt(h.created_at)} ${h.staff_name ? `• ${escapeHtml(h.staff_name)}` : ""}</small></div>`).join("")}</div></section>${deleteSection}`;
   if (canManageAssignment) {
     $("#assignPriority").value = c.priority || "normal";
     if (c.due_at)
