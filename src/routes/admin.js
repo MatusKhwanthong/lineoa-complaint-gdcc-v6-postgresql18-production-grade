@@ -293,6 +293,7 @@ router.get('/complaints', async (req, res) => {
         c.line_display_name,
         c.created_at,
         c.updated_at,
+        c.due_at,
         c.assigned_staff_user_id,
         c.department_id,
         cc.name_th AS category_name,
